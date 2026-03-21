@@ -18,7 +18,7 @@
 - scripts: 组织为core和module子目录，包含GDScript或其他脚本，用于核心功能和模块化组件。 
 
 ## 框架文档
-https://qf.readthedocs.io/zh-cn/latest/QFramework_v1.0_Guide/01_introduction/01_introduction.html
+https://github.com/GeWuYou/GFramework/tree/main/docs
 
 ## 许可证
 
