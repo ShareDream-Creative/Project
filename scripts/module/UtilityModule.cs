@@ -1,0 +1,41 @@
+using GFramework.Game.Abstractions.Data;
+using GFramework.Game.Data;
+using GFramework.Game.Serializer;
+using GFramework.Godot.Scene;
+using GFramework.Godot.Storage;
+using GFramework.Godot.UI;
+using GFrameworkGodotTemplate.scripts.data;
+using GFrameworkGodotTemplate.scripts.utility;
+using Godot;
+
+namespace GFrameworkGodotTemplate.scripts.module;
+
+/// <summary>
+///     工具模块类，负责安装和管理游戏中的实用工具组件
+/// </summary>
+public class UtilityModule : IArchitectureModule
+{
+    /// <summary>
+    ///     安装模块到指定的游戏架构中
+    /// </summary>
+    /// <param name="architecture">要安装模块的目标游戏架构实例</param>
+    public void Install(IArchitecture architecture)
+    {
+        architecture.RegisterUtility(new GodotUiRegistry());
+        architecture.RegisterUtility(new GodotSceneRegistry());
+        architecture.RegisterUtility(new GodotTextureRegistry());
+        architecture.RegisterUtility(new GodotUiFactory());
+        architecture.RegisterUtility(new GodotSceneFactory());
+        var jsonSerializer = new JsonSerializer();
+        architecture.RegisterUtility(jsonSerializer);
+        var storage = new GodotFileStorage(jsonSerializer);
+        architecture.RegisterUtility(storage);
+        architecture.RegisterUtility(new UnifiedSettingsDataRepository(storage, jsonSerializer,
+            new DataRepositoryOptions
+            {
+                BasePath = ProjectSettings.GetSetting("application/config/save/setting_path").AsString(),
+                AutoBackup = true
+            }));
+        architecture.RegisterUtility(new SaveStorageUtility());
+    }
+}
