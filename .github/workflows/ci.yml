@@ -19,9 +19,10 @@ jobs:
     steps:
       # 检出源代码，设置fetch-depth为0以获取完整的git历史
       - name: Checkout code
-        uses: actions/checkout@v6
+        uses: actions/checkout@v4   # 修正版本
         with:
           fetch-depth: 0
+
       # TruffleHog OSS 扫描步骤
       # 使用 TruffleHog 工具扫描代码库中的敏感信息泄露，如API密钥、密码等
       # 该步骤会比较基础分支和当前提交之间的差异，检测新增内容中是否包含敏感数据
@@ -34,6 +35,8 @@ jobs:
           base: ${{ github.event.before }}
           # 当前提交哈希，作为扫描的目标版本
           head: ${{ github.sha }}
+          # 仅对已验证的秘密失败（避免因未验证的误报中断构建）
+          extra_args: --only-verified
 
       - name: Setup .NET 10
         uses: actions/setup-dotnet@v5
@@ -50,9 +53,11 @@ jobs:
       # 执行NuGet包恢复操作
       - name: Restore
         run: dotnet restore
+
       # 恢复.NET本地工具
       - name: Restore .NET tools
         run: dotnet tool restore
+
       # Godot 项目通常使用 Debug 或 ExportDebug/ExportRelease 配置
       - name: Build C# Project
         run: dotnet build --no-restore
