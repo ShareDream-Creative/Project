@@ -28,7 +28,7 @@
         </PackageReference>
         <!-- 清理后的重复项，只保留一个版本（0.0.205） -->
         <PackageReference Include="GeWuYou.GFramework" Version="0.0.205" />
-        <PackageReference Include="GeWuYou.GFramework.Godot" Version="0.0.205" />
+        <PackageReference Include="GeWuYou.GFramework.Godot" Version="0.0.208" />
         <PackageReference Include="GeWuYou.GFramework.Godot.SourceGenerators" Version="0.0.205" />
         <PackageReference Include="GeWuYou.GFramework.SourceGenerators" Version="0.0.205" />
         <PackageReference Include="Mediator.SourceGenerator" Version="3.0.1">
