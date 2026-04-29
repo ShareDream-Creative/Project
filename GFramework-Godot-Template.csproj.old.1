@@ -1,4 +1,4 @@
-<Project Sdk="Godot.NET.Sdk/4.6.1">
+<Project Sdk="Godot.NET.Sdk/4.6.0">
     <PropertyGroup>
         <TargetFramework>net10.0</TargetFramework>
         <TargetFramework Condition=" '$(GodotTargetPlatform)' == 'android' ">net9.0</TargetFramework>
@@ -51,11 +51,15 @@
         <Content Include="scripts\module\README.md" />
         <Content Include="scripts\poker\state\DragState.cs.uid" />
         <Content Include="scripts\poker\state\IdleState.cs.uid" />
+        <Content Include="scripts\poker\state\OnSelectState.cs.uid" />
+        <Content Include="scripts\poker\state\UnSelectState.cs.uid" />
     </ItemGroup>
     <ItemGroup>
         <Folder Include="scripts\enums\game\" />
+        <Folder Include="scripts\extensions\" />
         <Folder Include="scripts\intro\" />
         <Folder Include="scripts\main_menu\" />
         <Folder Include="scripts\tests\" />
+        <Folder Include="scripts\test\" />
     </ItemGroup>
 </Project>
