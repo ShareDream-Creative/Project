@@ -9,10 +9,12 @@
     </PropertyGroup>
     <ItemGroup>
         <Compile Remove="scripts\core\ui\UiFactory.cs" />
+        <Compile Remove="scenes\**" />
         <Compile Include="script_templates\Node\SimpleSceneControllerTemplate.cs" />
         <Compile Remove="script_templates\**" />
     </ItemGroup>
     <ItemGroup>
+        <EmbeddedResource Remove="scenes\**" />
         <EmbeddedResource Remove="script_templates\**" />
     </ItemGroup>
     <ItemGroup>
@@ -44,18 +46,17 @@
         <Content Include=".github\workflows\release.yml" />
         <Content Include="addons.jsonc" />
         <Content Include="global\README.md" />
-        <Content Include="scenes\poker\poker.tscn" />
         <Content Include="scripts\data\model\README.md" />
         <Content Include="scripts\data\README.md" />
         <Content Include="scripts\entities\README.md" />
         <Content Include="scripts\module\README.md" />
-        <Content Include="scripts\poker\state\DragState.cs.uid" />
-        <Content Include="scripts\poker\state\IdleState.cs.uid" />
     </ItemGroup>
     <ItemGroup>
         <Folder Include="scripts\enums\game\" />
+        <Folder Include="scripts\extensions\" />
         <Folder Include="scripts\intro\" />
         <Folder Include="scripts\main_menu\" />
         <Folder Include="scripts\tests\" />
+        <Folder Include="scripts\test\" />
     </ItemGroup>
 </Project>
