@@ -37,3 +37,8 @@ text = "场景2"
 unique_name_in_owner = true
 layout_mode = 2
 text = "主场景"
+
+[node name="gametest" type="Button" parent="CenterContainer/HBoxContainer" unique_id=1109145886]
+unique_name_in_owner = true
+layout_mode = 2
+text = "测试用场景"

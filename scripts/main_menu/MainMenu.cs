@@ -20,59 +20,59 @@ namespace GFrameworkGodotTemplate.scripts.main_menu;
 [Log]
 public partial class MainMenu : Control, IController, IUiPageBehaviorProvider, ISimpleUiPage
 {
-    /// <summary>
-    ///     页面行为实例的私有字段
-    /// </summary>
-    private IUiPageBehavior? _page;
+	/// <summary>
+	///     页面行为实例的私有字段
+	/// </summary>
+	private IUiPageBehavior? _page;
 
-    private IStateMachineSystem _stateMachineSystem = null!;
+	private IStateMachineSystem _stateMachineSystem = null!;
 
-    private IUiRouter _uiRouter = null!;
-    private Button NewGameButton => GetNode<Button>("%NewGameButton");
-    private Button ContinueGameButton => GetNode<Button>("%ContinueGameButton");
-    private Button OptionsMenuButton => GetNode<Button>("%OptionsMenuButton");
-    private Button CreditsButton => GetNode<Button>("%CreditsButton");
-    private Button ExitButton => GetNode<Button>("%ExitButton");
+	private IUiRouter _uiRouter = null!;
+	private Button NewGameButton => GetNode<Button>("%NewGameButton");
+	private Button ContinueGameButton => GetNode<Button>("%ContinueGameButton");
+	private Button OptionsMenuButton => GetNode<Button>("%OptionsMenuButton");
+	private Button CreditsButton => GetNode<Button>("%CreditsButton");
+	private Button ExitButton => GetNode<Button>("%ExitButton");
 
-    /// <summary>
-    ///     Ui Key的字符串形式
-    /// </summary>
-    public static string UiKeyStr => nameof(UiKey.MainMenu);
+	/// <summary>
+	///     Ui Key的字符串形式
+	/// </summary>
+	public static string UiKeyStr => nameof(UiKey.MainMenu);
 
-    /// <summary>
-    ///     获取页面行为实例，如果不存在则创建新的CanvasItemUiPageBehavior实例
-    /// </summary>
-    /// <returns>返回IUiPageBehavior类型的页面行为实例</returns>
-    public IUiPageBehavior GetPage()
-    {
-        _page ??= UiPageBehaviorFactory.Create<Control>(this, UiKeyStr, UiLayer.Page);
-        return _page;
-    }
+	/// <summary>
+	///     获取页面行为实例，如果不存在则创建新的CanvasItemUiPageBehavior实例
+	/// </summary>
+	/// <returns>返回IUiPageBehavior类型的页面行为实例</returns>
+	public IUiPageBehavior GetPage()
+	{
+		_page ??= UiPageBehaviorFactory.Create<Control>(this, UiKeyStr, UiLayer.Page);
+		return _page;
+	}
 
-    /// <summary>
-    ///     节点准备就绪时的回调方法
-    ///     在节点添加到场景树后调用
-    /// </summary>
-    public override void _Ready()
-    {
-        _uiRouter = this.GetSystem<IUiRouter>()!;
-        _stateMachineSystem = this.GetSystem<IStateMachineSystem>()!;
-        SetupEventHandlers();
-    }
+	/// <summary>
+	///     节点准备就绪时的回调方法
+	///     在节点添加到场景树后调用
+	/// </summary>
+	public override void _Ready()
+	{
+		_uiRouter = this.GetSystem<IUiRouter>()!;
+		_stateMachineSystem = this.GetSystem<IStateMachineSystem>()!;
+		SetupEventHandlers();
+	}
 
-    private void SetupEventHandlers()
-    {
-        // 绑定退出游戏按钮点击事件
-        ExitButton.Pressed += () => this.RunCommandCoroutine(new ExitGameCommand());
-        // 绑定制作组按钮点击事件
-        CreditsButton.Pressed += () =>
-        {
-            _uiRouter.PushAsync(Credits.UiKeyStr).AsTask().ToCoroutineEnumerator().RunCoroutine();
-        };
-        OptionsMenuButton.Pressed += () => { this.RunCommandCoroutine(new OpenOptionsMenuCommand()); };
-        NewGameButton.Pressed += () =>
-        {
-            _stateMachineSystem.ChangeToAsync<PlayingState>().ToCoroutineEnumerator().RunCoroutine();
-        };
-    }
+	private void SetupEventHandlers()
+	{
+		// 绑定退出游戏按钮点击事件
+		ExitButton.Pressed += () => this.RunCommandCoroutine(new ExitGameCommand());
+		// 绑定制作组按钮点击事件
+		CreditsButton.Pressed += () =>
+		{
+			_uiRouter.PushAsync(Credits.UiKeyStr).AsTask().ToCoroutineEnumerator().RunCoroutine();
+		};
+		OptionsMenuButton.Pressed += () => { this.RunCommandCoroutine(new OpenOptionsMenuCommand()); };
+		NewGameButton.Pressed += () =>
+		{
+			_stateMachineSystem.ChangeToAsync<PlayingState>().ToCoroutineEnumerator().RunCoroutine();
+		};
+	}
 }

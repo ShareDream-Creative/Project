@@ -1,0 +1,52 @@
+[gd_scene format=3 uid="uid://c10ls4boso1xf"]
+
+[ext_resource type="Script" uid="uid://os4x18sbn8mu" path="res://scripts/tests/GameTest.cs" id="1_nbt8x"]
+[ext_resource type="Material" uid="uid://dsuylvexqgefv" path="res://resource/shader/bass_red.tres" id="2_nbt8x"]
+[ext_resource type="Script" uid="uid://bl2b4o5hf1114" path="res://scripts/player/PlayerMovementController.cs" id="3_lqvvs"]
+
+[sub_resource type="CanvasTexture" id="CanvasTexture_lqvvs"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_lqvvs"]
+size = Vector2(848, 55)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_uyrkt"]
+size = Vector2(87, 63)
+
+[sub_resource type="CanvasTexture" id="CanvasTexture_pu572"]
+
+[node name="GAMETEST" type="Node2D" unique_id=716527460]
+script = ExtResource("1_nbt8x")
+
+[node name="GROUND" type="Node2D" parent="." unique_id=1782179669]
+position = Vector2(-3, 0)
+
+[node name="Sprite2D" type="Sprite2D" parent="GROUND" unique_id=877745140]
+material = ExtResource("2_nbt8x")
+position = Vector2(467.00006, 449.99997)
+rotation = 3.1415927
+scale = Vector2(859.40204, 62.19941)
+texture = SubResource("CanvasTexture_lqvvs")
+
+[node name="StaticBody2D" type="StaticBody2D" parent="GROUND" unique_id=1718816835]
+position = Vector2(151, 231)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="GROUND/StaticBody2D" unique_id=1034087019]
+position = Vector2(310, 215)
+shape = SubResource("RectangleShape2D_lqvvs")
+
+[node name="player" type="Node2D" parent="." unique_id=1583637017]
+position = Vector2(10, 10)
+
+[node name="CharacterBody2D" type="CharacterBody2D" parent="player" unique_id=674564748]
+position = Vector2(331, 72)
+script = ExtResource("3_lqvvs")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="player/CharacterBody2D" unique_id=204895645]
+position = Vector2(1.5, 0)
+shape = SubResource("RectangleShape2D_uyrkt")
+
+[node name="Sprite2D" type="Sprite2D" parent="player/CharacterBody2D" unique_id=41781500]
+material = ExtResource("2_nbt8x")
+position = Vector2(1.4999933, 0.49999857)
+scale = Vector2(87, 63.000004)
+texture = SubResource("CanvasTexture_pu572")

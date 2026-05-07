@@ -10,15 +10,15 @@ namespace GFrameworkGodotTemplate.scripts.module;
 /// </summary>
 public class SystemModule : IArchitectureModule
 {
-    /// <summary>
-    ///     安装方法，用于向游戏架构注册各种系统组件
-    /// </summary>
-    /// <param name="architecture">游戏架构接口实例，用于注册系统</param>
-    public void Install(IArchitecture architecture)
-    {
-        architecture.RegisterSystem(new UiRouter());
-        architecture.RegisterSystem(new SceneRouter());
-        architecture.RegisterSystem(new SettingsSystem());
-        architecture.RegisterSystem(new GodotAudioSystem());
-    }
+	/// <summary>
+	///     安装方法，用于向游戏架构注册各种系统组件
+	/// </summary>
+	/// <param name="architecture">游戏架构接口实例，用于注册系统</param>
+	public void Install(IArchitecture architecture)
+	{
+		architecture.RegisterSystem(new UiRouter());
+		architecture.RegisterSystem(new SceneRouter());
+		architecture.RegisterSystem(new SettingsSystem());
+		architecture.RegisterSystem(new GodotAudioSystem());
+	}
 }

@@ -1,4 +1,4 @@
-﻿namespace GFrameworkGodotTemplate.scripts.enums.scene;
+namespace GFrameworkGodotTemplate.scripts.enums.scene;
 
 /// <summary>
 ///     定义游戏场景的键值枚举
@@ -6,18 +6,24 @@
 /// </summary>
 public enum SceneKey
 {
-    /// <summary>
-    ///     游戏启动场景
-    ///     通常用于初始化游戏环境、加载基础资源等操作
-    /// </summary>
-    Boot,
+	/// <summary>
+	///     游戏启动场景
+	///     通常用于初始化游戏环境、加载基础资源等操作
+	/// </summary>
+	Boot,
 
-    /// <summary>
-    ///     主游戏场景
-    ///     核心游戏逻辑和主要界面显示的场景
-    /// </summary>
-    Main,
-    Scene1,
-    Scene2,
-    Home
+	/// <summary>
+	///     主游戏场景
+	///     核心游戏逻辑和主要界面显示的场景
+	/// </summary>
+	Main,
+	Scene1,
+	Scene2,
+	Home,
+
+	/// <summary>
+	///     游戏测试场景
+	///     用于游戏功能测试和开发的实验性场景
+	/// </summary>
+	GameTest
 }

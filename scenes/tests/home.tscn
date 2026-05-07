@@ -10,5 +10,5 @@ script = ExtResource("1_eymoy")
 
 [node name="Sprite2D" type="Sprite2D" parent="." unique_id=1684800398]
 material = SubResource("CanvasItemMaterial_koa58")
-position = Vector2(992, 529)
+position = Vector2(480, 263)
 texture = ExtResource("2_p3574")

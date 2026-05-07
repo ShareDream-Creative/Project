@@ -10,5 +10,6 @@ script = ExtResource("1_na1cm")
 
 [node name="Sprite2D" type="Sprite2D" parent="." unique_id=1110659108]
 material = SubResource("CanvasItemMaterial_8jw84")
-position = Vector2(960, 540)
+position = Vector2(477, 271)
+scale = Vector2(0.5, 0.5)
 texture = ExtResource("1_x7k20")

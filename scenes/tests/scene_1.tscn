@@ -10,6 +10,6 @@ script = ExtResource("1_12grh")
 
 [node name="Sprite2D" type="Sprite2D" parent="." unique_id=1461216630]
 material = SubResource("CanvasItemMaterial_fmqly")
-position = Vector2(960, 540)
-scale = Vector2(3, 3)
+position = Vector2(477, 276)
+scale = Vector2(1.5, 1.5)
 texture = ExtResource("1_8tm01")

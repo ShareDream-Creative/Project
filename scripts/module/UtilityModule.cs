@@ -15,27 +15,27 @@ namespace GFrameworkGodotTemplate.scripts.module;
 /// </summary>
 public class UtilityModule : IArchitectureModule
 {
-    /// <summary>
-    ///     安装模块到指定的游戏架构中
-    /// </summary>
-    /// <param name="architecture">要安装模块的目标游戏架构实例</param>
-    public void Install(IArchitecture architecture)
-    {
-        architecture.RegisterUtility(new GodotUiRegistry());
-        architecture.RegisterUtility(new GodotSceneRegistry());
-        architecture.RegisterUtility(new GodotTextureRegistry());
-        architecture.RegisterUtility(new GodotUiFactory());
-        architecture.RegisterUtility(new GodotSceneFactory());
-        var jsonSerializer = new JsonSerializer();
-        architecture.RegisterUtility(jsonSerializer);
-        var storage = new GodotFileStorage(jsonSerializer);
-        architecture.RegisterUtility(storage);
-        architecture.RegisterUtility(new UnifiedSettingsDataRepository(storage, jsonSerializer,
-            new DataRepositoryOptions
-            {
-                BasePath = ProjectSettings.GetSetting("application/config/save/setting_path").AsString(),
-                AutoBackup = true
-            }));
-        architecture.RegisterUtility(new SaveStorageUtility());
-    }
+	/// <summary>
+	///     安装模块到指定的游戏架构中
+	/// </summary>
+	/// <param name="architecture">要安装模块的目标游戏架构实例</param>
+	public void Install(IArchitecture architecture)
+	{
+		architecture.RegisterUtility(new GodotUiRegistry());
+		architecture.RegisterUtility(new GodotSceneRegistry());
+		architecture.RegisterUtility(new GodotTextureRegistry());
+		architecture.RegisterUtility(new GodotUiFactory());
+		architecture.RegisterUtility(new GodotSceneFactory());
+		var jsonSerializer = new JsonSerializer();
+		architecture.RegisterUtility(jsonSerializer);
+		var storage = new GodotFileStorage(jsonSerializer);
+		architecture.RegisterUtility(storage);
+		architecture.RegisterUtility(new UnifiedSettingsDataRepository(storage, jsonSerializer,
+			new DataRepositoryOptions
+			{
+				BasePath = ProjectSettings.GetSetting("application/config/save/setting_path").AsString(),
+				AutoBackup = true
+			}));
+		architecture.RegisterUtility(new SaveStorageUtility());
+	}
 }

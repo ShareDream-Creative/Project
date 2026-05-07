@@ -1,0 +1,61 @@
+<Project Sdk="Godot.NET.Sdk/4.6.1">
+    <PropertyGroup>
+        <TargetFramework>net10.0</TargetFramework>
+        <TargetFramework Condition=" '$(GodotTargetPlatform)' == 'android' ">net9.0</TargetFramework>
+        <EnableDynamicLoading>true</EnableDynamicLoading>
+        <RootNamespace>GFrameworkGodotTemplate</RootNamespace>
+        <Nullable>enable</Nullable>
+        <LangVersion>preview</LangVersion>
+    </PropertyGroup>
+    <ItemGroup>
+        <Compile Remove="scripts\core\ui\UiFactory.cs" />
+        <Compile Include="script_templates\Node\SimpleSceneControllerTemplate.cs" />
+        <Compile Remove="script_templates\**" />
+    </ItemGroup>
+    <ItemGroup>
+        <EmbeddedResource Remove="script_templates\**" />
+    </ItemGroup>
+    <ItemGroup>
+        <PackageReference Update="Meziantou.Analyzer" Version="3.0.25">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+        </PackageReference>
+        <PackageReference Update="Meziantou.Polyfill" Version="1.0.104">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers</IncludeAssets>
+        </PackageReference>
+        <!-- 清理后的重复项，只保留一个版本（0.0.205） -->
+        <PackageReference Include="GeWuYou.GFramework" Version="0.0.205" />
+        <PackageReference Include="GeWuYou.GFramework.Godot" Version="0.0.205" />
+        <PackageReference Include="GeWuYou.GFramework.Godot.SourceGenerators" Version="0.0.205" />
+        <PackageReference Include="GeWuYou.GFramework.SourceGenerators" Version="0.0.205" />
+        <PackageReference Include="Mediator.SourceGenerator" Version="3.0.1">
+            <PrivateAssets>all</PrivateAssets>
+            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
+        </PackageReference>
+        <!-- 升级 Scriban 到已修复漏洞的版本（7.0.1） -->
+        <PackageReference Include="Scriban" Version="7.0.1" />
+    </ItemGroup>
+    <ItemGroup>
+        <Content Include=".github\dependabot.yml" />
+        <Content Include=".github\workflows\auto-tag.yml" />
+        <Content Include=".github\workflows\ci.yml" />
+        <Content Include=".github\workflows\codeql.yml" />
+        <Content Include=".github\workflows\release.yml" />
+        <Content Include="addons.jsonc" />
+        <Content Include="global\README.md" />
+        <Content Include="scenes\poker\poker.tscn" />
+        <Content Include="scripts\data\model\README.md" />
+        <Content Include="scripts\data\README.md" />
+        <Content Include="scripts\entities\README.md" />
+        <Content Include="scripts\module\README.md" />
+        <Content Include="scripts\poker\state\DragState.cs.uid" />
+        <Content Include="scripts\poker\state\IdleState.cs.uid" />
+    </ItemGroup>
+    <ItemGroup>
+        <Folder Include="scripts\enums\game\" />
+        <Folder Include="scripts\intro\" />
+        <Folder Include="scripts\main_menu\" />
+        <Folder Include="scripts\tests\" />
+    </ItemGroup>
+</Project>
