@@ -25,5 +25,32 @@ public enum SceneKey
 	///     游戏测试场景
 	///     用于游戏功能测试和开发的实验性场景
 	/// </summary>
-	GameTest
+	GameTest,
+
+	/// <summary>
+	///     关卡准备场景
+	///     显示关卡信息、卡牌选择等准备界面
+	///     用户可在此选择开始构建或退回上一级菜单
+	/// </summary>
+	LevelPerpare,
+
+	/// <summary>
+	///     关卡游戏场景
+	///     实际游戏进行中的主场景
+	///     包含构建UI和游戏UI的切换管理
+	/// </summary>
+	LevelPlay,
+
+	/// <summary>
+	///     关卡选择场景
+	///     显示所有可用关卡供玩家选择
+	///     从主菜单的"关卡"按钮进入
+	/// </summary>
+	LevelChoose,
+
+	/// <summary>
+	///     关卡选择底层场景
+	///     作为关卡选择UI的底层游戏场景
+	/// </summary>
+	Choose
 }

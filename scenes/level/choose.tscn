@@ -1,0 +1,8 @@
+[gd_scene format=3 uid="uid://b0es5ip1puo3c"]
+
+[ext_resource type="Script" uid="uid://un5o58hg8clc" path="res://scripts/level/Choose.cs" id="1_uxpdb"]
+
+[node name="Choose" type="Node2D" unique_id=1170862632]
+script = ExtResource("1_uxpdb")
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=1954969342]

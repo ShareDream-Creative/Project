@@ -1,0 +1,68 @@
+[gd_scene format=3 uid="uid://b40nbkaa1kix5"]
+
+[node name="LevelEndUi" type="Control" unique_id=1815159211]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ColorRect" type="ColorRect" parent="." unique_id=1810229701]
+layout_mode = 1
+anchors_preset = -1
+offset_top = -1.0
+offset_right = 960.0
+offset_bottom = 539.0
+mouse_filter = 2
+color = Color(0.16924527, 0.1692453, 0.16924527, 1)
+
+[node name="ColorRect2" type="ColorRect" parent="." unique_id=1212957487]
+layout_mode = 1
+offset_left = 28.0
+offset_top = 20.0
+offset_right = 671.0
+offset_bottom = 508.0
+color = Color(0, 0, 0, 0.39215687)
+
+[node name="shop" type="MarginContainer" parent="." unique_id=140314276]
+layout_mode = 1
+anchors_preset = -1
+offset_left = 19.0
+offset_top = 16.0
+offset_right = 671.0
+offset_bottom = 508.0
+
+[node name="select" type="MarginContainer" parent="." unique_id=1665780213]
+layout_mode = 1
+offset_left = 684.0
+offset_top = 117.0
+offset_right = 949.0
+offset_bottom = 297.0
+theme_override_constants/margin_left = 2
+theme_override_constants/margin_top = 2
+theme_override_constants/margin_right = 2
+theme_override_constants/margin_bottom = 2
+
+[node name="VBoxContainer" type="VBoxContainer" parent="select" unique_id=657846748]
+layout_mode = 2
+
+[node name="PurchaseButton" type="Button" parent="select/VBoxContainer" unique_id=575569605]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+text = "购买
+"
+
+[node name="NextLevelButton" type="Button" parent="select/VBoxContainer" unique_id=489813407]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+text = "下一关
+"
+
+[node name="ExitButton" type="Button" parent="select/VBoxContainer" unique_id=277083828]
+unique_name_in_owner = true
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+text = "返回主菜单"

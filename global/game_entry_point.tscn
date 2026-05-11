@@ -16,6 +16,10 @@
 [ext_resource type="Texture2D" uid="uid://6aq7b0pqd1dp" path="res://assets/art/textures/boot_start/godot.jpg" id="13_fgqit"]
 [ext_resource type="PackedScene" uid="uid://db7uqtqvqp4dn" path="res://scenes/intro/intro.tscn" id="13_hjx06"]
 [ext_resource type="Script" uid="uid://ls8nkxn3gipd" path="res://scripts/core/resource/TextureConfig.cs" id="14_hjx06"]
+[ext_resource type="PackedScene" uid="uid://c3iol7hgt1qse" path="res://scenes/level/level_perpare.tscn" id="15_qdo7l"]
+[ext_resource type="PackedScene" uid="uid://d0qmei4jkw44s" path="res://scenes/level/Level_1/level_play.tscn" id="16_1y7ah"]
+[ext_resource type="PackedScene" uid="uid://drs0igcx1576g" path="res://scenes/level/level_Choose.tscn" id="17_1y7ah"]
+[ext_resource type="PackedScene" uid="uid://b0es5ip1puo3c" path="res://scenes/level/choose.tscn" id="18_gktnk"]
 
 [sub_resource type="Resource" id="Resource_pn3ws"]
 script = ExtResource("3_x37g7")
@@ -44,6 +48,12 @@ metadata/_custom_type_script = "uid://cowpnmhamgtd3"
 script = ExtResource("3_x37g7")
 UiKey = 6
 Scene = ExtResource("7_iumd8")
+metadata/_custom_type_script = "uid://cowpnmhamgtd3"
+
+[sub_resource type="Resource" id="Resource_ncbsq"]
+script = ExtResource("3_x37g7")
+UiKey = 7
+Scene = ExtResource("17_1y7ah")
 metadata/_custom_type_script = "uid://cowpnmhamgtd3"
 
 [sub_resource type="Resource" id="Resource_1yddw"]
@@ -81,12 +91,30 @@ SceneKey = 5
 Scene = ExtResource("10_gametest")
 metadata/_custom_type_script = "uid://5mfgbvaive07"
 
+[sub_resource type="Resource" id="Resource_gktnk"]
+script = ExtResource("7_iiepj")
+SceneKey = 6
+Scene = ExtResource("15_qdo7l")
+metadata/_custom_type_script = "uid://5mfgbvaive07"
+
+[sub_resource type="Resource" id="Resource_cia4t"]
+script = ExtResource("7_iiepj")
+SceneKey = 7
+Scene = ExtResource("16_1y7ah")
+metadata/_custom_type_script = "uid://5mfgbvaive07"
+
+[sub_resource type="Resource" id="Resource_nxcnk"]
+script = ExtResource("7_iiepj")
+SceneKey = 9
+Scene = ExtResource("18_gktnk")
+metadata/_custom_type_script = "uid://5mfgbvaive07"
+
 [sub_resource type="Resource" id="Resource_k055p"]
 script = ExtResource("14_hjx06")
 Texture = ExtResource("13_fgqit")
 
 [node name="GameEntryPoint" type="Node" unique_id=729277825]
 script = ExtResource("1_a14y6")
-UiPageConfigs = Array[Object]([SubResource("Resource_pn3ws"), SubResource("Resource_f22d5"), SubResource("Resource_inr81"), SubResource("Resource_rtbxk"), SubResource("Resource_d4hg6")])
-GameSceneConfigs = Array[Object]([SubResource("Resource_1yddw"), SubResource("Resource_fgqit"), SubResource("Resource_hjx06"), SubResource("Resource_iumd8"), SubResource("Resource_qdo7l"), SubResource("Resource_1y7ah")])
+UiPageConfigs = Array[Object]([SubResource("Resource_pn3ws"), SubResource("Resource_f22d5"), SubResource("Resource_inr81"), SubResource("Resource_rtbxk"), SubResource("Resource_d4hg6"), SubResource("Resource_ncbsq")])
+GameSceneConfigs = Array[Object]([SubResource("Resource_1yddw"), SubResource("Resource_fgqit"), SubResource("Resource_hjx06"), SubResource("Resource_iumd8"), SubResource("Resource_qdo7l"), SubResource("Resource_1y7ah"), SubResource("Resource_gktnk"), SubResource("Resource_cia4t"), SubResource("Resource_nxcnk")])
 TextureConfigs = Array[Object]([SubResource("Resource_k055p")])

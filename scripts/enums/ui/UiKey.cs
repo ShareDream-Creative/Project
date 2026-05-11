@@ -1,4 +1,4 @@
-﻿namespace GFrameworkGodotTemplate.scripts.enums.ui;
+namespace GFrameworkGodotTemplate.scripts.enums.ui;
 
 /// <summary>
 ///     定义用户界面键值枚举，用于标识不同的UI面板或菜单
@@ -39,5 +39,9 @@ public enum UiKey
     /// </remarks>
     Credits,
     HomeUi,
-    PauseMenu
+    PauseMenu,
+    /// <summary>
+    ///     关卡选择界面键值
+    /// </summary>
+    LevelChoose
 }

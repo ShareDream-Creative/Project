@@ -1,3 +1,4 @@
+using GFramework.Core.Coroutine.Instructions;
 using GFramework.Game.Abstractions.Enums;
 using GFramework.Game.Abstractions.UI;
 using GFramework.Godot.UI;
@@ -18,6 +19,8 @@ public partial class HomeUi : Control, IController, IUiPageBehaviorProvider, ISi
 	private IUiPageBehavior? _page;
 
 	private ISceneRouter _sceneRouter = null!;
+
+	private IUiRouter _uiRouter = null!;
 
 	private Button Scene1Button => GetNode<Button>("%Scene1Button");
 
@@ -58,6 +61,7 @@ public partial class HomeUi : Control, IController, IUiPageBehaviorProvider, ISi
 	{
 		Hide();
 		_sceneRouter = this.GetSystem<ISceneRouter>()!;
+		_uiRouter = this.GetSystem<IUiRouter>()!;
 
 		// 在此添加就绪逻辑
 		SetupEventHandlers();
@@ -76,8 +80,7 @@ public partial class HomeUi : Control, IController, IUiPageBehaviorProvider, ISi
 		Scene1Button.Pressed += () => SwitchScene(nameof(SceneKey.Scene1));
 		Scene2Button.Pressed += () => SwitchScene(nameof(SceneKey.Scene2));
 		HomeUiButton.Pressed += () => SwitchScene(nameof(SceneKey.Home));
-		gametest.Pressed += () => SwitchScene(nameof(SceneKey.GameTest));
-		return;
+		gametest.Pressed += () => SwitchScene(nameof(SceneKey.LevelPerpare));
 
 		IEnumerator<IYieldInstruction> ReplaceScene(string key)
 		{
@@ -99,7 +102,7 @@ public partial class HomeUi : Control, IController, IUiPageBehaviorProvider, ISi
 
 			try
 			{
-				ReplaceScene(sceneKey).RunCoroutine();
+				SwitchSceneCoroutine(sceneKey).RunCoroutine();
 			}
 			catch (Exception ex)
 			{
@@ -112,5 +115,25 @@ public partial class HomeUi : Control, IController, IUiPageBehaviorProvider, ISi
 					btn.Disabled = false;
 			}
 		}
+	}
+
+	/// <summary>
+	///     场景切换协程
+	///     先关闭当前UI页面，再切换到底层场景
+	/// </summary>
+	private IEnumerator<IYieldInstruction> SwitchSceneCoroutine(string sceneKey)
+	{
+		_log.Info($"[HomeUi] 开始切换到场景: {sceneKey}");
+
+		// 步骤1: 关闭当前UI页面（关键修复！）
+		_log.Debug("[HomeUi] 正在关闭 HomeUi UI页面...");
+		yield return _uiRouter.PopAsync().AsTask().AsCoroutineInstruction();
+		_log.Debug("[HomeUi] HomeUi UI页面已关闭");
+
+		// 步骤2: 切换底层场景
+		_log.Debug($"[HomeUi] 正在替换场景为: {sceneKey}");
+		yield return _sceneRouter.ReplaceAsync(sceneKey).AsTask().AsCoroutineInstruction();
+
+		_log.Info($"[HomeUi] 场景切换完成: {sceneKey}");
 	}
 }

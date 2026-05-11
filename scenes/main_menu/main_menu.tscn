@@ -57,6 +57,11 @@ custom_minimum_size = Vector2(200, 0)
 layout_mode = 2
 text = "继续游戏"
 
+[node name="ChooseLevelButton" type="Button" parent="MarginContainer/CenterContainer/VBoxContainer" unique_id=1549178750]
+unique_name_in_owner = true
+layout_mode = 2
+text = "关卡"
+
 [node name="OptionsMenuButton" type="Button" parent="MarginContainer/CenterContainer/VBoxContainer" unique_id=1782111077]
 unique_name_in_owner = true
 custom_minimum_size = Vector2(200, 0)

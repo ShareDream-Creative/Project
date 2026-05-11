@@ -1,0 +1,21 @@
+[gd_scene format=3 uid="uid://d0qmei4jkw44s"]
+
+[ext_resource type="Script" uid="uid://3tb7rrn68vcw" path="res://scripts/level/LevelPlay.cs" id="1_gbikr"]
+[ext_resource type="PackedScene" uid="uid://c10ls4boso1xf" path="res://scenes/tests/gametest.tscn" id="2_6fqnh"]
+
+[node name="LevelPlay" type="Node2D" unique_id=1122537427]
+script = ExtResource("1_gbikr")
+
+[node name="GAMETEST" parent="." unique_id=716527460 instance=ExtResource("2_6fqnh")]
+
+[node name="HBoxContainer" type="HBoxContainer" parent="." unique_id=253349282]
+
+[node name="Button" type="Button" parent="HBoxContainer" unique_id=300726471]
+layout_mode = 2
+text = "1"
+
+[node name="Button2" type="Button" parent="HBoxContainer" unique_id=909728234]
+layout_mode = 2
+
+[node name="Button3" type="Button" parent="HBoxContainer" unique_id=644657476]
+layout_mode = 2

@@ -1,0 +1,25 @@
+[gd_scene format=3 uid="uid://cxpjo1up6wf8s"]
+
+[ext_resource type="Script" uid="uid://bl2b4o5hf1114" path="res://scripts/player/PlayerMovementController.cs" id="1_dovo2"]
+[ext_resource type="Material" uid="uid://dsuylvexqgefv" path="res://resource/shader/bass_red.tres" id="2_gmlin"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_lvxji"]
+size = Vector2(87, 63)
+
+[sub_resource type="CanvasTexture" id="CanvasTexture_p47bc"]
+
+[node name="Player" type="Node2D" unique_id=1470390202]
+
+[node name="CharacterBody2D" type="CharacterBody2D" parent="." unique_id=786851039]
+position = Vector2(331, 72)
+script = ExtResource("1_dovo2")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="CharacterBody2D" unique_id=357574500]
+position = Vector2(1.5, 0)
+shape = SubResource("RectangleShape2D_lvxji")
+
+[node name="Sprite2D" type="Sprite2D" parent="CharacterBody2D" unique_id=570647319]
+material = ExtResource("2_gmlin")
+position = Vector2(1.4999933, 0.49999857)
+scale = Vector2(87, 63.000004)
+texture = SubResource("CanvasTexture_p47bc")

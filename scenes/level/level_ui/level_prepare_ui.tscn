@@ -1,0 +1,77 @@
+[gd_scene format=3 uid="uid://d0pvmxbb3280b"]
+
+[node name="LevelPrepareUi" type="Control" unique_id=72931]
+layout_mode = 3
+anchors_preset = 15
+anchor_right = 1.0
+anchor_bottom = 1.0
+grow_horizontal = 2
+grow_vertical = 2
+
+[node name="ColorRect" type="ColorRect" parent="." unique_id=1131805502]
+layout_mode = 1
+anchors_preset = -1
+anchor_right = 0.001
+anchor_bottom = 0.002
+offset_left = 0.99999994
+offset_top = 0.99999994
+offset_right = 40.04
+offset_bottom = 39.92
+scale = Vector2(24, 13.537995)
+color = Color(1, 1, 1, 0.20784314)
+
+[node name="option" type="MarginContainer" parent="ColorRect" unique_id=2083219887]
+custom_minimum_size = Vector2(10, 10)
+layout_mode = 1
+offset_left = 32.999996
+offset_top = 27.99528
+offset_right = 233.0
+offset_bottom = 143.99529
+scale = Vector2(0.029668642, 0.07489419)
+
+[node name="VBoxContainer" type="VBoxContainer" parent="ColorRect/option" unique_id=1134283404]
+layout_mode = 2
+
+[node name="EnterButton" type="Button" parent="ColorRect/option/VBoxContainer" unique_id=220324120]
+unique_name_in_owner = true
+layout_mode = 2
+text = "开始构建"
+
+[node name="BackButton" type="Button" parent="ColorRect/option/VBoxContainer" unique_id=1884351769]
+unique_name_in_owner = true
+layout_mode = 2
+text = "退回
+"
+
+[node name="ColorRect2" type="ColorRect" parent="." unique_id=1190587823]
+layout_mode = 1
+offset_left = 48.0
+offset_top = 382.0
+offset_right = 88.0
+offset_bottom = 422.0
+scale = Vector2(17.88, 2.8)
+color = Color(0, 0, 0, 0.4862745)
+
+[node name="cardspot" type="MarginContainer" parent="ColorRect2" unique_id=1899720672]
+layout_mode = 1
+offset_right = 40.0
+offset_bottom = 40.0
+
+[node name="ColorRect3" type="ColorRect" parent="." unique_id=689688473]
+layout_mode = 1
+offset_left = 45.000004
+offset_top = 30.0
+offset_right = 85.0
+offset_bottom = 70.0
+scale = Vector2(18.000542, 8.513163)
+color = Color(0, 0, 0, 0.4862745)
+
+[node name="stock" type="MarginContainer" parent="ColorRect3" unique_id=788985452]
+layout_mode = 1
+anchors_preset = -1
+anchor_bottom = 0.003
+offset_top = 0.117465496
+offset_right = 39.99879
+offset_bottom = 39.93562
+grow_horizontal = 2
+grow_vertical = 2
