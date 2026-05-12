@@ -1,3 +1,24 @@
 [gd_scene format=3 uid="uid://dkghspvsfp8g1"]
 
 [node name="Level5" type="Node2D" unique_id=1942541567]
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=475259778]
+position = Vector2(461, 190)
+
+[node name="TextEdit" type="TextEdit" parent="Sprite2D" unique_id=1615813308]
+custom_minimum_size = Vector2(100, 100)
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -20.5
+offset_top = -125.5
+offset_right = 134.5
+offset_bottom = 143.5
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_font_sizes/font_size = 200
+text = "5"

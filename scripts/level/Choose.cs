@@ -12,62 +12,62 @@ namespace GFrameworkGodotTemplate.scripts.level;
 [Log]
 public partial class Choose : Node2D, IController, ISceneBehaviorProvider, ISimpleScene
 {
-    #region 私有字段
+	#region 私有字段
 
-    private ISceneBehavior? _scene;
+	private ISceneBehavior? _scene;
 
-    #endregion
+	#endregion
 
-    #region 场景键值
+	#region 场景键值
 
-    /// <summary>
-    ///     获取场景键值字符串
-    /// </summary>
-    public static string SceneKeyStr => nameof(SceneKey.Choose);
+	/// <summary>
+	///     获取场景键值字符串
+	/// </summary>
+	public static string SceneKeyStr => nameof(SceneKey.Choose);
 
-    #endregion
+	#endregion
 
-    #region 生命周期方法
+	#region 生命周期方法
 
-    public override void _Ready()
-    {
-        _log.Info("[Choose] 场景初始化完成");
-    }
+	public override void _Ready()
+	{
+		_log.Info("[Choose] 场景初始化完成");
+	}
 
-    public override void _ExitTree()
-    {
-        CleanupResources();
-    }
+	public override void _ExitTree()
+	{
+		CleanupResources();
+	}
 
-    #endregion
+	#endregion
 
-    #region 公开API - 场景行为
+	#region 公开API - 场景行为
 
-    /// <summary>
-    ///     获取场景行为实例
-    ///     使用工厂模式创建场景行为，确保单例模式
-    /// </summary>
-    /// <returns>ISceneBehavior接口的场景行为实例</returns>
-    public ISceneBehavior GetScene()
-    {
-        _scene ??= SceneBehaviorFactory.Create<Node2D>(this, SceneKeyStr);
-        return _scene;
-    }
+	/// <summary>
+	///     获取场景行为实例
+	///     使用工厂模式创建场景行为，确保单例模式
+	/// </summary>
+	/// <returns>ISceneBehavior接口的场景行为实例</returns>
+	public ISceneBehavior GetScene()
+	{
+		_scene ??= SceneBehaviorFactory.Create<Node2D>(this, SceneKeyStr);
+		return _scene;
+	}
 
-    #endregion
+	#endregion
 
-    #region 私有方法 - 资源管理
+	#region 私有方法 - 资源管理
 
-    /// <summary>
-    ///     清理资源
-    ///     在场景退出时调用，确保正确释放资源
-    /// </summary>
-    private void CleanupResources()
-    {
-        _log.Debug("[Choose] 正在清理场景资源...");
-        GC.Collect();
-        _log.Info("[Choose] 资源清理完成");
-    }
+	/// <summary>
+	///     清理资源
+	///     在场景退出时调用，确保正确释放资源
+	/// </summary>
+	private void CleanupResources()
+	{
+		_log.Debug("[Choose] 正在清理场景资源...");
+		GC.Collect();
+		_log.Info("[Choose] 资源清理完成");
+	}
 
-    #endregion
+	#endregion
 }

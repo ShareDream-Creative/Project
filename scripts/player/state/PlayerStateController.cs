@@ -1,6 +1,8 @@
 using GFramework.Core.Abstractions.State;
 using GFrameworkGodotTemplate.scripts.core.state.impls;
+using GFrameworkGodotTemplate.scripts.level;
 using GFrameworkGodotTemplate.scripts.player.interfaces;
+using Godot;
 
 namespace GFrameworkGodotTemplate.scripts.player.state;
 
@@ -181,6 +183,12 @@ public class PlayerStateController : IPlayerStateController
 	///     3. 判断是否为PlayingState类型
 	///        - 是: 设置IsInputEnabled=true
 	///        - 否: 设置IsInputEnabled=false
+	///     4. 额外检查关卡构建阶段标志
+	///        - 如果BaseLevelController.IsBuildPhaseActive为true
+	///        - 强制设置IsInputEnabled=false（禁止移动）
+	///     5. 额外检查关卡成功阶段标志
+	///        - 如果BaseLevelController.IsSuccessPhaseActive为true
+	///        - 强制设置IsInputEnabled=false（禁止移动，但允许鼠标UI操作）
 	///     
 	///     调用时机:
 	///     应在每帧_PhysicsProcess()开始时调用一次
@@ -203,7 +211,31 @@ public class PlayerStateController : IPlayerStateController
 			return;
 		}
 
-		IsInputEnabled = _stateMachineSystem.Current is PlayingState;
+		var isPlayingState = _stateMachineSystem.Current is PlayingState;
+		
+		if (BaseLevelController.IsBuildPhaseActive)
+		{
+			if (IsInputEnabled)
+			{
+				GD.Print("[PlayerStateController] ⚠ Build阶段激活，禁止玩家移动");
+			}
+			
+			IsInputEnabled = false;
+			return;
+		}
+
+		if (BaseLevelController.IsSuccessPhaseActive)
+		{
+			if (IsInputEnabled)
+			{
+				GD.Print("[PlayerStateController] ⚠ Success阶段激活，禁止玩家移动（允许鼠标UI操作）");
+			}
+			
+			IsInputEnabled = false;
+			return;
+		}
+
+		IsInputEnabled = isPlayingState;
 	}
 
 	#endregion

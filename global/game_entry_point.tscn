@@ -11,15 +11,26 @@
 [ext_resource type="Script" uid="uid://5mfgbvaive07" path="res://scripts/core/resource/SceneConfig.cs" id="7_iiepj"]
 [ext_resource type="PackedScene" uid="uid://bkpda73hbmyix" path="res://scenes/pause_menu/pause_menu.tscn" id="7_iumd8"]
 [ext_resource type="PackedScene" uid="uid://b1vjila6v2iyw" path="res://scenes/tests/scene_2.tscn" id="8_rtbxk"]
+[ext_resource type="PackedScene" uid="uid://d0pvmxbb3280b" path="res://scenes/level/level_ui/level_prepare_ui.tscn" id="9_cia4t"]
 [ext_resource type="PackedScene" uid="uid://fb017woaakjg" path="res://scenes/tests/home.tscn" id="9_iumd8"]
 [ext_resource type="PackedScene" uid="uid://c10ls4boso1xf" path="res://scenes/tests/gametest.tscn" id="10_gametest"]
+[ext_resource type="PackedScene" uid="uid://b51xntbjirn8x" path="res://scenes/level/level_ui/level_build_ui.tscn" id="10_kcrt4"]
+[ext_resource type="PackedScene" uid="uid://dqn7cls75lvq5" path="res://scenes/level/level_ui/level_play_ui.tscn" id="11_3tdmm"]
+[ext_resource type="PackedScene" uid="uid://4712dts8ejt3" path="res://scenes/level/level_ui/level_success_ui.tscn" id="12_br86l"]
+[ext_resource type="PackedScene" uid="uid://b40nbkaa1kix5" path="res://scenes/level/level_ui/level_end_ui.tscn" id="13_br86l"]
 [ext_resource type="Texture2D" uid="uid://6aq7b0pqd1dp" path="res://assets/art/textures/boot_start/godot.jpg" id="13_fgqit"]
 [ext_resource type="PackedScene" uid="uid://db7uqtqvqp4dn" path="res://scenes/intro/intro.tscn" id="13_hjx06"]
 [ext_resource type="Script" uid="uid://ls8nkxn3gipd" path="res://scripts/core/resource/TextureConfig.cs" id="14_hjx06"]
+[ext_resource type="PackedScene" uid="uid://dhf4oxywyjb8q" path="res://scenes/level/level_ui/level_defate_ui.tscn" id="14_msp3p"]
 [ext_resource type="PackedScene" uid="uid://c3iol7hgt1qse" path="res://scenes/level/level_perpare.tscn" id="15_qdo7l"]
 [ext_resource type="PackedScene" uid="uid://d0qmei4jkw44s" path="res://scenes/level/Level_1/level_play.tscn" id="16_1y7ah"]
 [ext_resource type="PackedScene" uid="uid://drs0igcx1576g" path="res://scenes/level/level_Choose.tscn" id="17_1y7ah"]
 [ext_resource type="PackedScene" uid="uid://b0es5ip1puo3c" path="res://scenes/level/choose.tscn" id="18_gktnk"]
+[ext_resource type="PackedScene" uid="uid://baowkx3by1gv3" path="res://scenes/level/Level_2/Level_2.tscn" id="20_iygyk"]
+[ext_resource type="PackedScene" uid="uid://dpsf0nrota04t" path="res://scenes/level/Level_3/Level_3.tscn" id="21_8pd7l"]
+[ext_resource type="PackedScene" uid="uid://bvkmk4p3xbo26" path="res://scenes/level/level_4/Level_4.tscn" id="22_cqeab"]
+[ext_resource type="PackedScene" uid="uid://dkghspvsfp8g1" path="res://scenes/level/level_5/Level_5.tscn" id="23_kcrt4"]
+[ext_resource type="PackedScene" uid="uid://befmad4owi4hs" path="res://scenes/level/level_end.tscn" id="27_3tdmm"]
 
 [sub_resource type="Resource" id="Resource_pn3ws"]
 script = ExtResource("3_x37g7")
@@ -54,6 +65,42 @@ metadata/_custom_type_script = "uid://cowpnmhamgtd3"
 script = ExtResource("3_x37g7")
 UiKey = 7
 Scene = ExtResource("17_1y7ah")
+metadata/_custom_type_script = "uid://cowpnmhamgtd3"
+
+[sub_resource type="Resource" id="Resource_t3o0b"]
+script = ExtResource("3_x37g7")
+UiKey = 8
+Scene = ExtResource("9_cia4t")
+metadata/_custom_type_script = "uid://cowpnmhamgtd3"
+
+[sub_resource type="Resource" id="Resource_msp3p"]
+script = ExtResource("3_x37g7")
+UiKey = 9
+Scene = ExtResource("10_kcrt4")
+metadata/_custom_type_script = "uid://cowpnmhamgtd3"
+
+[sub_resource type="Resource" id="Resource_v7wag"]
+script = ExtResource("3_x37g7")
+UiKey = 10
+Scene = ExtResource("11_3tdmm")
+metadata/_custom_type_script = "uid://cowpnmhamgtd3"
+
+[sub_resource type="Resource" id="Resource_n6gr3"]
+script = ExtResource("3_x37g7")
+UiKey = 11
+Scene = ExtResource("12_br86l")
+metadata/_custom_type_script = "uid://cowpnmhamgtd3"
+
+[sub_resource type="Resource" id="Resource_p2vp1"]
+script = ExtResource("3_x37g7")
+UiKey = 12
+Scene = ExtResource("13_br86l")
+metadata/_custom_type_script = "uid://cowpnmhamgtd3"
+
+[sub_resource type="Resource" id="Resource_55wvj"]
+script = ExtResource("3_x37g7")
+UiKey = 13
+Scene = ExtResource("14_msp3p")
 metadata/_custom_type_script = "uid://cowpnmhamgtd3"
 
 [sub_resource type="Resource" id="Resource_1yddw"]
@@ -99,14 +146,44 @@ metadata/_custom_type_script = "uid://5mfgbvaive07"
 
 [sub_resource type="Resource" id="Resource_cia4t"]
 script = ExtResource("7_iiepj")
-SceneKey = 7
-Scene = ExtResource("16_1y7ah")
+SceneKey = 14
+Scene = ExtResource("18_gktnk")
 metadata/_custom_type_script = "uid://5mfgbvaive07"
 
 [sub_resource type="Resource" id="Resource_nxcnk"]
 script = ExtResource("7_iiepj")
+SceneKey = 8
+Scene = ExtResource("16_1y7ah")
+metadata/_custom_type_script = "uid://5mfgbvaive07"
+
+[sub_resource type="Resource" id="Resource_8pd7l"]
+script = ExtResource("7_iiepj")
 SceneKey = 9
-Scene = ExtResource("18_gktnk")
+Scene = ExtResource("20_iygyk")
+metadata/_custom_type_script = "uid://5mfgbvaive07"
+
+[sub_resource type="Resource" id="Resource_cqeab"]
+script = ExtResource("7_iiepj")
+SceneKey = 10
+Scene = ExtResource("21_8pd7l")
+metadata/_custom_type_script = "uid://5mfgbvaive07"
+
+[sub_resource type="Resource" id="Resource_kcrt4"]
+script = ExtResource("7_iiepj")
+SceneKey = 11
+Scene = ExtResource("22_cqeab")
+metadata/_custom_type_script = "uid://5mfgbvaive07"
+
+[sub_resource type="Resource" id="Resource_3tdmm"]
+script = ExtResource("7_iiepj")
+SceneKey = 12
+Scene = ExtResource("23_kcrt4")
+metadata/_custom_type_script = "uid://5mfgbvaive07"
+
+[sub_resource type="Resource" id="Resource_br86l"]
+script = ExtResource("7_iiepj")
+SceneKey = 15
+Scene = ExtResource("27_3tdmm")
 metadata/_custom_type_script = "uid://5mfgbvaive07"
 
 [sub_resource type="Resource" id="Resource_k055p"]
@@ -115,6 +192,6 @@ Texture = ExtResource("13_fgqit")
 
 [node name="GameEntryPoint" type="Node" unique_id=729277825]
 script = ExtResource("1_a14y6")
-UiPageConfigs = Array[Object]([SubResource("Resource_pn3ws"), SubResource("Resource_f22d5"), SubResource("Resource_inr81"), SubResource("Resource_rtbxk"), SubResource("Resource_d4hg6"), SubResource("Resource_ncbsq")])
-GameSceneConfigs = Array[Object]([SubResource("Resource_1yddw"), SubResource("Resource_fgqit"), SubResource("Resource_hjx06"), SubResource("Resource_iumd8"), SubResource("Resource_qdo7l"), SubResource("Resource_1y7ah"), SubResource("Resource_gktnk"), SubResource("Resource_cia4t"), SubResource("Resource_nxcnk")])
+UiPageConfigs = Array[Object]([SubResource("Resource_pn3ws"), SubResource("Resource_f22d5"), SubResource("Resource_inr81"), SubResource("Resource_rtbxk"), SubResource("Resource_d4hg6"), SubResource("Resource_ncbsq"), SubResource("Resource_t3o0b"), SubResource("Resource_msp3p"), SubResource("Resource_v7wag"), SubResource("Resource_n6gr3"), SubResource("Resource_p2vp1"), SubResource("Resource_55wvj")])
+GameSceneConfigs = Array[Object]([SubResource("Resource_1yddw"), SubResource("Resource_fgqit"), SubResource("Resource_hjx06"), SubResource("Resource_iumd8"), SubResource("Resource_qdo7l"), SubResource("Resource_1y7ah"), SubResource("Resource_gktnk"), SubResource("Resource_cia4t"), SubResource("Resource_nxcnk"), SubResource("Resource_8pd7l"), SubResource("Resource_cqeab"), SubResource("Resource_kcrt4"), SubResource("Resource_3tdmm"), SubResource("Resource_br86l")])
 TextureConfigs = Array[Object]([SubResource("Resource_k055p")])

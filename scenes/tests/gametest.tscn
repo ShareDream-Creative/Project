@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://c10ls4boso1xf"]
 
-[ext_resource type="Script" uid="uid://os4x18sbn8mu" path="res://scripts/tests/GameTest.cs" id="1_nbt8x"]
+[ext_resource type="Script" uid="uid://fxx0uycph8gj" path="res://scripts/level/BaseLevelController.cs" id="1_nbt8x"]
 [ext_resource type="Material" uid="uid://dsuylvexqgefv" path="res://resource/shader/bass_red.tres" id="2_nbt8x"]
 
 [sub_resource type="CanvasTexture" id="CanvasTexture_lqvvs"]
@@ -31,14 +31,34 @@ position = Vector2(151, 231)
 position = Vector2(310, 215)
 shape = SubResource("RectangleShape2D_lqvvs")
 
-[node name="Begin" type="Area2D" parent="." unique_id=819745779]
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Begin" unique_id=836724927]
-position = Vector2(73, 392)
-shape = SubResource("RectangleShape2D_nbt8x")
-
 [node name="End" type="Area2D" parent="." unique_id=14275492]
+unique_name_in_owner = true
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="End" unique_id=565269224]
 position = Vector2(839, 397)
 shape = SubResource("RectangleShape2D_nbt8x")
+
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=1585816188]
+position = Vector2(461, 190)
+
+[node name="TextEdit" type="TextEdit" parent="Sprite2D" unique_id=324846460]
+custom_minimum_size = Vector2(100, 100)
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -186.5
+offset_top = -116.5
+offset_right = 267.5
+offset_bottom = 134.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_font_sizes/font_size = 200
+text = "text"
+
+[node name="Begin" type="Node2D" parent="." unique_id=1731048949]
+unique_name_in_owner = true
+position = Vector2(130, 331)

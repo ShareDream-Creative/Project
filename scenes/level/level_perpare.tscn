@@ -1,20 +1,8 @@
 [gd_scene format=3 uid="uid://c3iol7hgt1qse"]
 
-[ext_resource type="PackedScene" uid="uid://d0pvmxbb3280b" path="res://scenes/level/level_ui/level_prepare_ui.tscn" id="1_18g7q"]
-[ext_resource type="Script" uid="uid://dm221sgre4j8i" path="res://scripts/level/LevelPerpare.cs" id="1_iuxwx"]
+[ext_resource type="Script" uid="uid://dm221sgre4j8i" path="res://scripts/level/LevelPerpare.cs" id="1_18g7q"]
 
-[node name="level_perpare" type="Control" unique_id=105309765]
-layout_mode = 3
-anchors_preset = 15
-anchor_right = 1.0
-anchor_bottom = 1.0
-grow_horizontal = 2
-grow_vertical = 2
-script = ExtResource("1_iuxwx")
+[node name="Perpare" type="Node2D" unique_id=1153485945]
+script = ExtResource("1_18g7q")
 
-[node name="LevelPrepareUi" parent="." unique_id=72931 instance=ExtResource("1_18g7q")]
-layout_mode = 1
-offset_left = 1.0
-offset_top = -1.0
-offset_right = 1.0
-offset_bottom = -1.0
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=868595314]

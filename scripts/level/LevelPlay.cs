@@ -6,70 +6,65 @@ using Godot;
 namespace GFrameworkGodotTemplate.scripts.level;
 
 /// <summary>
-///     关卡游戏场景控制器
-///     负责管理关卡游戏进行中的主场景和UI状态切换
+///     Level_1 游戏场景控制器
+///     继承自 BaseLevelController，提供完整的关卡游戏流程管理
 ///     
-///     功能说明:
-///     - 场景加载完成后自动激活LevelBuildUi(构建模式)
-///     - 点击"完成!"按钮(FinishButton)后:
-///       1. 失活LevelBuildUi
-///       2. 激活LevelPlayUi(游戏模式)
-///     - 在游戏模式下可点击BackButton返回HomeUi场景
+///     架构设计:
+///     ┌─────────────────────────────────────────────────┐
+///     │              BaseLevelController (基类)          │
+///     │  ├─ 场景初始化 (OnEnterAsync)                   │
+///     │  ├─ 玩家生成 (SpawnPlayer)                      │
+///     │  ├─ UI状态机 (Build → Play → Success)           │
+///     │  ├─ 输入控制 (Build阶段限制输入)                 │
+///     │  ├─ 终点检测 (End区域碰撞检测)                   │
+///     │  └─ 暂停系统 (ESC暂停菜单)                       │
+///     ├─────────────────────────────────────────────────┤
+///     │              LevelPlay (本类)                    │
+///     │  ├─ 关卡标识 (SceneKey.LevelPlay)                │
+///     │  ├─ 场景行为工厂 (ISceneBehavior)               │
+///     │  ├─ 关卡特定配置                                │
+///     │  └─ 扩展点重写 (可选)                           │
+///     └─────────────────────────────────────────────────┘
 ///     
-///     场景节点结构 (来自 level_play.tscn):
+///     场景节点结构 (level_play.tscn):
 ///     LevelPlay (Node2D) ← 挂载本脚本
-///     ├── LevelBuildUi (Control) - 构建阶段UI
-///     │   ├── ColorRect (背景)
-///     │   └── FinishButton (Button) - "完成!"
-///     ├── LevelDefateUi (Control) - 失败UI (备用)
-///     ├── LevelSuccessUi (Control) - 成功UI (备用)
-///     └── LevelPlayUi (Control) - 游戏进行中UI
-///         └── BackButton (Button) - "退回" (可选)
+///     ├── Sprite2D (背景/装饰)
+///     │   └── TextEdit (显示关卡编号"1")
+///     ├── End (Area2D) ← 终点检测区域 (%End)
+///     │   └── a (CollisionShape2D)
+///     ├── Begin (Node2D) ← 玩家出生点 (%Begin)
+///     └── StaticBody2D ← 地面物理体
+///         ├── CollisionShape2D
+///         └── ColorRect
 ///     
-///     UI状态机:
-///     ┌─────────────┐    点击完成    ┌─────────────┐    点击退回    ┌──────────┐
-///     │ LevelBuildUi │ ────────────→ │ LevelPlayUi │ ──────────→ │  HomeUi  │
-///     │  (构建模式)   │              │  (游戏模式)   │              │ (返回)    │
-///     └─────────────┘              └─────────────┘              └──────────┘
+///     UI加载方式:
+///     所有UI通过 UiRouter 动态加载，不包含在场景文件中
+///     - Build阶段: LevelBuildUi (由基类自动加载)
+///     - Play阶段: LevelPlayUi (由基类自动切换)
+///     - Success阶段: LevelSuccessUi (由基类自动加载)
+///     
+///     使用方式:
+///     1. 将此脚本挂载到 level_play.tscn 的根节点
+///     2. 确保场景中有 %Begin 和 %End 节点
+///     3. 基类会自动处理所有核心流程
+///     4. 仅在需要时重写虚方法添加自定义逻辑
 /// </summary>
 [ContextAware]
 [Log]
-public partial class LevelPlay : Node2D, IController, ISceneBehaviorProvider, ISimpleScene
+public partial class LevelPlay : BaseLevelController
 {
 	#region 私有字段
 
+	/// <summary>场景行为实例</summary>
 	private ISceneBehavior? _scene;
 
-	private ISceneRouter _sceneRouter = null!;
-
 	#endregion
 
-	#region 节点引用
-
-	/// <summary>
-	///     构建阶段UI引用
-	///     初始激活，用于关卡构建/布置阶段
-	/// </summary>
-	private Control LevelBuildUi => GetNode<Control>("LevelBuildUi");
-
-	/// <summary>
-	///     游戏进行中UI引用
-	///     完成构建后激活，用于实际游戏操作
-	/// </summary>
-	private Control LevelPlayUi => GetNode<Control>("LevelPlayUi");
-
-	/// <summary>
-	///     "完成!"按钮引用
-	///     位于LevelBuildUi中，点击后切换到游戏模式
-	/// </summary>
-	private Button FinishButton => GetNode<Button>("LevelBuildUi/FinishButton");
-
-	#endregion
-
-	#region 场景键值
+	#region 场景标识
 
 	/// <summary>
 	///     获取场景键值字符串
+	///     用于场景路由系统和行为工厂
 	/// </summary>
 	public static string SceneKeyStr => nameof(SceneKey.LevelPlay);
 
@@ -77,19 +72,30 @@ public partial class LevelPlay : Node2D, IController, ISceneBehaviorProvider, IS
 
 	#region 生命周期方法
 
+	/// <summary>
+	///     节点准备就绪回调
+	///     在 _EnterAsync() 之前调用，用于初始化本地资源
+	/// </summary>
 	public override void _Ready()
 	{
-		_sceneRouter = this.GetSystem<ISceneRouter>()!;
+		_log.Info("[LevelPlay] ══════════ 节点初始化 ══════════");
+		_log.Info($"[LevelPlay] 场景路径: {SceneFilePath ?? "未知"}");
+		_log.Info($"[LevelPlay] 关卡标识: {SceneKeyStr}");
 		
-		InitializeUiState();
-		SetupEventHandlers();
+		base._Ready();
 		
-		_log.Debug("[LevelPlay] 场景初始化完成，当前处于构建模式");
+		_log.Info("[LevelPlay] ✓✓✓ LevelPlay 初始化完成");
+		_log.Info("[LevelPlay] 等待 BaseLevelController.OnEnterAsync() 触发完整流程...");
 	}
 
+	/// <summary>
+	///     节点退出树时清理资源
+	/// </summary>
 	public override void _ExitTree()
 	{
+		_log.Info("[LevelPlay] 正在清理 LevelPlay 特有资源...");
 		CleanupResources();
+		base._ExitTree();
 	}
 
 	#endregion
@@ -99,9 +105,10 @@ public partial class LevelPlay : Node2D, IController, ISceneBehaviorProvider, IS
 	/// <summary>
 	///     获取场景行为实例
 	///     使用工厂模式创建场景行为，确保单例模式
+	///     此方法必须实现，用于框架的场景管理系统
 	/// </summary>
 	/// <returns>ISceneBehavior接口的场景行为实例</returns>
-	public ISceneBehavior GetScene()
+	public override ISceneBehavior GetScene()
 	{
 		_scene ??= SceneBehaviorFactory.Create<Node2D>(this, SceneKeyStr);
 		return _scene;
@@ -109,133 +116,64 @@ public partial class LevelPlay : Node2D, IController, ISceneBehaviorProvider, IS
 
 	#endregion
 
-	#region 私有方法 - UI初始化
+	#region 重写扩展点 - 关卡特定逻辑
 
 	/// <summary>
-	///     初始化UI状态
-	///     场景加载完成后默认激活构建UI，隐藏其他UI
+	///     玩家生成后的自定义逻辑
+	///     可在此处添加关卡特定的玩家初始化逻辑
+	///     例如: 设置玩家初始属性、装备、动画等
 	/// </summary>
-	private void InitializeUiState()
+	/// <param name="player">生成的玩家节点实例</param>
+	protected override void OnPlayerSpawned(Node2D player)
 	{
-		if (LevelBuildUi != null)
-		{
-			LevelBuildUi.Show();
-			_log.Debug("[LevelPlay] LevelBuildUi 已激活");
-		}
-		else
-		{
-			_log.Error("[LevelPlay] 无法找到 LevelBuildUi 节点!");
-		}
-
-		if (LevelPlayUi != null)
-		{
-			LevelPlayUi.Hide();
-			_log.Debug("[LevelPlay] LevelPlayUi 已隐藏(等待激活)");
-		}
-		else
-		{
-			_log.Error("[LevelPlay] 无法找到 LevelPlayUi 节点!");
-		}
-	}
-
-	#endregion
-
-	#region 私有方法 - 事件处理
-
-	/// <summary>
-	///     设置按钮事件处理器
-	/// </summary>
-	private void SetupEventHandlers()
-	{
-		if (FinishButton != null)
-		{
-			FinishButton.Pressed += OnFinishButtonPressed;
-			_log.Debug("[LevelPlay] '完成!'按钮事件已绑定");
-		}
-		else
-		{
-			_log.Error("[LevelPlay] 无法找到 '完成!' 按钮!");
-		}
-	}
-
-	/// <summary>
-	///     处理"完成!"按钮点击事件
-	///     切换UI状态: 从构建模式切换到游戏模式
-	 /// </summary>
-	private void OnFinishButtonPressed()
-	{
-		_log.Info("[LevelPlay] 用户点击 '完成!'，切换到游戏模式...");
+		_log.Info("[LevelPlay] 🎮 玩家已生成到关卡中");
+		_log.Debug($"[LevelPlay] 玩家名称: {player.Name}");
+		_log.Debug($"[LevelPlay] 玩家位置: {player.GlobalPosition}");
 		
-		SwitchToGameMode();
+		base.OnPlayerSpawned(player);
 	}
 
 	/// <summary>
-	///     切换到游戏模式
-	///     失活构建UI，激活游戏UI
+	///     UI阶段切换时的自定义逻辑
+	///     可在此处添加关卡特定的阶段转换效果
+	///     例如: 播放过渡动画、触发事件、更新HUD等
 	/// </summary>
-	private void SwitchToGameMode()
+	/// <param name="oldPhase">旧阶段</param>
+	/// <param name="newPhase">新阶段</param>
+	protected override void OnPhaseChanged(LevelPhase oldPhase, LevelPhase newPhase)
 	{
-		if (LevelBuildUi != null)
-		{
-			LevelBuildUi.Hide();
-			_log.Debug("[LevelPlay] LevelBuildUi 已失活");
-		}
-
-		if (LevelPlayUi != null)
-		{
-			LevelPlayUi.Show();
-			_log.Debug("[LevelPlay] LevelPlayUi 已激活");
-			_log.Info("[LevelPlay] 成功切换到游戏模式!");
-			
-			TrySetupBackButton();
-		}
-	}
-
-	/// <summary>
-	///     尝试设置返回按钮
-	///     在LevelPlayUi中查找并绑定BackButton（如果存在）
-	/// </summary>
-	private void TrySetupBackButton()
-	{
-		try
-		{
-			var backButton = LevelPlayUi?.GetNodeOrNull<Button>("BackButton");
-			
-			if (backButton != null)
-			{
-				backButton.Pressed += OnBackButtonPressed;
-				_log.Debug("[LevelPlay] BackButton 事件已绑定(位于LevelPlayUi中)");
-			}
-			else
-			{
-				_log.Debug("[LevelPlay] 未在LevelPlayUi中找到BackButton(可选功能)");
-			}
-		}
-		catch (Exception ex)
-		{
-			_log.Debug($"[LevelPlay] BackButton设置跳过: {ex.Message}");
-		}
-	}
-
-	/// <summary>
-	///     处理"退回"按钮点击事件
-	///     返回到HomeUi场景
-	/// </summary>
-	private void OnBackButtonPressed()
-	{
-		_log.Info("[LevelPlay] 用户点击 '退回'，返回 HomeUi 场景...");
+		_log.Info($"[LevelPlay] 📋 阶段切换: {oldPhase} → {newPhase}");
 		
-		try
+		switch (newPhase)
 		{
-			_sceneRouter.ReplaceAsync(nameof(SceneKey.Home))
-				.AsTask()
-				.ToCoroutineEnumerator()
-				.RunCoroutine();
+			case LevelPhase.Build:
+				_log.Info("[LevelPlay] 🔨 进入构建阶段 - 等待玩家完成布置");
+				break;
+				
+			case LevelPhase.Play:
+				_log.Info("[LevelPlay] 🎮 进入游玩阶段 - 游戏正式开始！");
+				break;
+				
+			case LevelPhase.Success:
+				_log.Info("[LevelPlay] 🎉 进入成功阶段 - 关卡完成！");
+				break;
 		}
-		catch (Exception ex)
-		{
-			_log.Error($"[LevelPlay] 返回失败: {ex.Message}");
-		}
+		
+		base.OnPhaseChanged(oldPhase, newPhase);
+	}
+
+	/// <summary>
+	///     游戏完成时的自定义逻辑
+	///     可在此处添加关卡特定的完成处理逻辑
+	///     例如: 计算分数、保存进度、解锁下一关等
+	/// </summary>
+	protected override void OnGameCompleted()
+	{
+		_log.Info("🎊 [LevelPlay] ═══════════════════════════");
+		_log.Info("🎊 [LevelPlay] 🏆 恭喜！Level_1 关卡完成！");
+		_log.Info("🎊 [LevelPlay] ═══════════════════════════");
+		
+		base.OnGameCompleted();
 	}
 
 	#endregion
@@ -243,25 +181,21 @@ public partial class LevelPlay : Node2D, IController, ISceneBehaviorProvider, IS
 	#region 私有方法 - 资源管理
 
 	/// <summary>
-	///     清理资源
-	///     在场景退出时调用，确保正确释放所有UI资源
+	///     清理 LevelPlay 特有的资源
+	///     在场景退出时自动调用
 	/// </summary>
 	private void CleanupResources()
 	{
-		_log.Debug("[LevelPlay] 正在清理场景资源...");
+		_log.Debug("[LevelPlay] 正在释放 LevelPlay 特有资源...");
 		
-		if (LevelBuildUi != null)
+		if (_scene != null)
 		{
-			_log.Debug("[LevelPlay] 释放 LevelBuildUi 资源");
-		}
-		
-		if (LevelPlayUi != null)
-		{
-			_log.Debug("[LevelPlay] 释放 LevelPlayUi 资源");
+			_log.Debug("[LevelPlay] 释放场景行为引用");
+			_scene = null;
 		}
 		
 		GC.Collect();
-		_log.Info("[LevelPlay] 资源清理完成");
+		_log.Info("[LevelPlay] ✓ LevelPlay 资源清理完成");
 	}
 
 	#endregion

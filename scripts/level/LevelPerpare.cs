@@ -10,20 +10,11 @@ namespace GFrameworkGodotTemplate.scripts.level;
 /// </summary>
 [ContextAware]
 [Log]
-public partial class LevelPerpare : Control, IController, ISceneBehaviorProvider, ISimpleScene
+public partial class LevelPerpare : Node2D, IController, ISceneBehaviorProvider, ISimpleScene
 {
 	#region 私有字段
 
 	private ISceneBehavior? _scene;
-
-	#endregion
-
-	#region 节点引用
-
-	/// <summary>
-	///     关卡准备UI子节点引用
-	/// </summary>
-	private Control LevelPrepareUi => GetNode<Control>("LevelPrepareUi");
 
 	#endregion
 
@@ -40,10 +31,9 @@ public partial class LevelPerpare : Control, IController, ISceneBehaviorProvider
 
 	public override void _Ready()
 	{
-		InitializeSubUi();
-		
 		_log.Info("[LevelPerpare] 场景初始化完成");
-		_log.Debug($"[LevelPerpare] 子UI状态: {(LevelPrepareUi != null ? "已加载" : "未找到")}");
+		_log.Info($"[LevelPerpare] 当前关卡: {LevelChoose.CurrentGameLevel}");
+		_log.Debug("[LevelPerpare] → UI层由UiRouter独立管理，本场景仅负责场景层逻辑");
 	}
 
 	public override void _ExitTree()
@@ -62,29 +52,8 @@ public partial class LevelPerpare : Control, IController, ISceneBehaviorProvider
 	/// <returns>ISceneBehavior接口的场景行为实例</returns>
 	public ISceneBehavior GetScene()
 	{
-		_scene ??= SceneBehaviorFactory.Create<Control>(this, SceneKeyStr);
+		_scene ??= SceneBehaviorFactory.Create<Node2D>(this, SceneKeyStr);
 		return _scene;
-	}
-
-	#endregion
-
-	#region 私有方法 - UI初始化
-
-	/// <summary>
-	///     初始化子UI组件
-	///     确保LevelPrepareUi正确加载和显示
-	/// </summary>
-	private void InitializeSubUi()
-	{
-		if (LevelPrepareUi != null)
-		{
-			LevelPrepareUi.Show();
-			_log.Debug("[LevelPerpare] LevelPrepareUi 子UI已激活");
-		}
-		else
-		{
-			_log.Error("[LevelPerpare] 未找到 LevelPrepareUi 子节点，请检查场景配置");
-		}
 	}
 
 	#endregion
@@ -93,17 +62,13 @@ public partial class LevelPerpare : Control, IController, ISceneBehaviorProvider
 
 	/// <summary>
 	///     清理资源
-	///     在场景退出时调用，确保正确释放资源
+	 ///     在场景退出时调用，确保正确释放资源
 	 /// </summary>
 	private void CleanupResources()
 	{
 		_log.Debug("[LevelPerpare] 正在清理场景资源...");
 		
-		if (LevelPrepareUi != null)
-		{
-			_log.Debug("[LevelPerpare] 释放 LevelPrepareUi 资源");
-		}
-		
+		_log.Debug("[LevelPerpare] 场景资源已释放");
 		GC.Collect();
 		_log.Info("[LevelPerpare] 资源清理完成");
 	}

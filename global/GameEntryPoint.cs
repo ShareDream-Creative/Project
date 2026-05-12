@@ -43,9 +43,19 @@ public partial class GameEntryPoint : Node
 	/// </value>
 	[Export]
 	public Array<UiPageConfig> UiPageConfigs { get; set; } = null!;
-
+	/// <summary>
+	///     游戏场景配置数组，包含所有可用的游戏场景配置项
+	/// </summary>
+	/// <value>
+	///     存储SceneConfig对象的数组集合
+	/// </value>
 	[Export] public Array<SceneConfig> GameSceneConfigs { get; set; } = null!;
-
+	/// <summary>
+	///     游戏纹理配置数组，包含所有可用的游戏纹理配置项
+	/// </summary>
+	/// <value>
+	///     存储TextureConfig对象的数组集合
+	/// </value>
 	[Export] public Array<TextureConfig> TextureConfigs { get; set; } = null!;
 
 	/// <summary>

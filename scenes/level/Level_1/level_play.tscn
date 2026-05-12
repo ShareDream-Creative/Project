@@ -1,21 +1,69 @@
 [gd_scene format=3 uid="uid://d0qmei4jkw44s"]
 
 [ext_resource type="Script" uid="uid://3tb7rrn68vcw" path="res://scripts/level/LevelPlay.cs" id="1_gbikr"]
-[ext_resource type="PackedScene" uid="uid://c10ls4boso1xf" path="res://scenes/tests/gametest.tscn" id="2_6fqnh"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_6huxq"]
+size = Vector2(91, 80)
+
+[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_gbikr"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_6fqnh"]
+size = Vector2(930, 94)
 
 [node name="LevelPlay" type="Node2D" unique_id=1122537427]
 script = ExtResource("1_gbikr")
 
-[node name="GAMETEST" parent="." unique_id=716527460 instance=ExtResource("2_6fqnh")]
+[node name="Sprite2D" type="Sprite2D" parent="." unique_id=1729069593]
+position = Vector2(461, 190)
 
-[node name="HBoxContainer" type="HBoxContainer" parent="." unique_id=253349282]
-
-[node name="Button" type="Button" parent="HBoxContainer" unique_id=300726471]
-layout_mode = 2
+[node name="TextEdit" type="TextEdit" parent="Sprite2D" unique_id=1879966862]
+custom_minimum_size = Vector2(100, 100)
+anchors_preset = 8
+anchor_left = 0.5
+anchor_top = 0.5
+anchor_right = 0.5
+anchor_bottom = 0.5
+offset_left = -20.5
+offset_top = -125.5
+offset_right = 124.5
+offset_bottom = 101.0
+grow_horizontal = 2
+grow_vertical = 2
+size_flags_horizontal = 3
+size_flags_vertical = 3
+theme_override_colors/search_result_color = Color(0.3019608, 0.3019608, 0.3019608, 0)
+theme_override_colors/search_result_border_color = Color(0.3, 0.3, 0.3, 0.4)
+theme_override_colors/caret_background_color = Color(0, 0, 0, 0)
+theme_override_colors/font_selected_color = Color(0, 0, 0, 0)
+theme_override_colors/selection_color = Color(0.5019608, 0.5019608, 0.5019608, 0)
+theme_override_colors/font_readonly_color = Color(0.875, 0.875, 0.875, 0.5)
+theme_override_colors/font_outline_color = Color(0, 0, 0, 0)
+theme_override_font_sizes/font_size = 200
 text = "1"
 
-[node name="Button2" type="Button" parent="HBoxContainer" unique_id=909728234]
-layout_mode = 2
+[node name="End" type="Area2D" parent="." unique_id=484024369]
+unique_name_in_owner = true
+position = Vector2(878, 388)
 
-[node name="Button3" type="Button" parent="HBoxContainer" unique_id=644657476]
-layout_mode = 2
+[node name="a" type="CollisionShape2D" parent="End" unique_id=1573256975]
+unique_name_in_owner = true
+position = Vector2(-35.5, -30)
+shape = SubResource("RectangleShape2D_6huxq")
+
+[node name="Begin" type="Node2D" parent="." unique_id=509271007]
+unique_name_in_owner = true
+position = Vector2(143, 343)
+
+[node name="StaticBody2D" type="StaticBody2D" parent="." unique_id=1544403390]
+position = Vector2(82, 436)
+physics_material_override = SubResource("PhysicsMaterial_gbikr")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="StaticBody2D" unique_id=1667970533]
+position = Vector2(389, 39)
+shape = SubResource("RectangleShape2D_6fqnh")
+
+[node name="ColorRect" type="ColorRect" parent="StaticBody2D" unique_id=2097535527]
+offset_left = -75.0
+offset_top = -7.0
+offset_right = 852.0
+offset_bottom = 86.0
