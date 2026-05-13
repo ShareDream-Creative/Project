@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://befmad4owi4hs"]
 
-[ext_resource type="Script" uid="uid://c0ujmbjc2dt4o" path="res://scripts/level/LevelEnd.cs" id="1_4hik6"]
+[ext_resource type="Script" uid="uid://b2u15ks3o0ma4" path="res://scripts/level/controllers/LevelEnd.cs" id="1_4hik6"]
 
 [node name="LevelEnd" type="Node2D" unique_id=552631031]
 script = ExtResource("1_4hik6")

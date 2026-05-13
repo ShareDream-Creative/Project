@@ -1,6 +1,6 @@
-[gd_scene format=3 uid="uid://b51xntbjirn8x"]
+[gd_scene format=3 uid="uid://d2x4bt0rm7hdy"]
 
-[ext_resource type="Script" uid="uid://bgjmk1s080xeu" path="res://scripts/level/LevelBuildUi.cs" id="1_du0q1"]
+[ext_resource type="Script" uid="uid://rgawai4oqo1t" path="res://scripts/level/ui/LevelBuildUi.cs" id="1_du0q1"]
 
 [node name="LevelBuildUi" type="Control" unique_id=1136690733]
 layout_mode = 3

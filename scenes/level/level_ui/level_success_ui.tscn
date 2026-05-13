@@ -1,7 +1,7 @@
 [gd_scene format=3 uid="uid://4712dts8ejt3"]
 
 [ext_resource type="Theme" uid="uid://drg0lvsgoqfsc" path="res://resource/theme/project_theme.tres" id="1_340sp"]
-[ext_resource type="Script" uid="uid://celwv14rmlh5w" path="res://scripts/level/LevelSuccessUi.cs" id="1_uue3r"]
+[ext_resource type="Script" uid="uid://7bs4yf7cjfp5" path="res://scripts/level/ui/LevelSuccessUi.cs" id="1_uue3r"]
 
 [node name="LevelSuccessUi" type="Control" unique_id=1748879524]
 layout_mode = 3

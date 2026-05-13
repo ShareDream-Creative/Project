@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://drs0igcx1576g"]
 
-[ext_resource type="Script" uid="uid://bprayfhgt1qob" path="res://scripts/level/LevelChoose.cs" id="1_lewwc"]
+[ext_resource type="Script" uid="uid://bqbs80thrmsvf" path="res://scripts/level/controllers/LevelChoose.cs" id="1_lewwc"]
 [ext_resource type="FontFile" uid="uid://b8a0llq18bkwa" path="res://assets/fonts/VonwaonBitmap-12px.ttf" id="1_pwkd3"]
 
 [node name="LevelChoose" type="Control" unique_id=1190375289]
@@ -37,55 +37,54 @@ theme_override_constants/separation = 100
 alignment = 1
 
 [node name="Level1" type="Button" parent="MarginContainer/VBoxContainer/HBoxContainer" unique_id=565778738]
-	unique_name_in_owner = true
-	clip_contents = true
-	custom_minimum_size = Vector2(200, 0)
-	layout_mode = 2
-	theme_override_fonts/font = ExtResource("1_pwkd3")
-	text = "1"
+unique_name_in_owner = true
+clip_contents = true
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+theme_override_fonts/font = ExtResource("1_pwkd3")
+text = "1"
 
 [node name="Level2" type="Button" parent="MarginContainer/VBoxContainer/HBoxContainer" unique_id=1115106896]
-	unique_name_in_owner = true
-	custom_minimum_size = Vector2(200, 0)
-	layout_mode = 2
-	theme_override_fonts/font = ExtResource("1_pwkd3")
-	text = "2"
+unique_name_in_owner = true
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+theme_override_fonts/font = ExtResource("1_pwkd3")
+text = "2"
 
 [node name="Level3" type="Button" parent="MarginContainer/VBoxContainer/HBoxContainer" unique_id=678860061]
-	unique_name_in_owner = true
-	custom_minimum_size = Vector2(200, 0)
-	layout_mode = 2
-	theme_override_fonts/font = ExtResource("1_pwkd3")
-	text = "3"
+unique_name_in_owner = true
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+theme_override_fonts/font = ExtResource("1_pwkd3")
+text = "3"
 
 [node name="HBoxContainer2" type="HBoxContainer" parent="MarginContainer/VBoxContainer" unique_id=910872652]
-	custom_minimum_size = Vector2(200, 100)
-	layout_mode = 2
-	theme_override_constants/separation = 100
-	alignment = 1
+custom_minimum_size = Vector2(200, 100)
+layout_mode = 2
+theme_override_constants/separation = 100
+alignment = 1
 
 [node name="Level4" type="Button" parent="MarginContainer/VBoxContainer/HBoxContainer2" unique_id=319127055]
-	unique_name_in_owner = true
-	custom_minimum_size = Vector2(200, 0)
-	layout_mode = 2
-	theme_override_fonts/font = ExtResource("1_pwkd3")
-	text = "4"
+unique_name_in_owner = true
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+theme_override_fonts/font = ExtResource("1_pwkd3")
+text = "4"
 
 [node name="Level5" type="Button" parent="MarginContainer/VBoxContainer/HBoxContainer2" unique_id=1029913727]
-	unique_name_in_owner = true
-	custom_minimum_size = Vector2(200, 0)
-	layout_mode = 2
-	theme_override_fonts/font = ExtResource("1_pwkd3")
-	text = "5"
+unique_name_in_owner = true
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+theme_override_fonts/font = ExtResource("1_pwkd3")
+text = "5"
 
 [node name="LevelTest" type="Button" parent="MarginContainer/VBoxContainer/HBoxContainer2" unique_id=364870758]
-	unique_name_in_owner = true
-	custom_minimum_size = Vector2(200, 0)
-	layout_mode = 2
-	theme_override_fonts/font = ExtResource("1_pwkd3")
-	text = "test
+unique_name_in_owner = true
+custom_minimum_size = Vector2(200, 0)
+layout_mode = 2
+theme_override_fonts/font = ExtResource("1_pwkd3")
+text = "test
 "
-
 
 [node name="BackButton" type="Button" parent="." unique_id=1093578425]
 unique_name_in_owner = true

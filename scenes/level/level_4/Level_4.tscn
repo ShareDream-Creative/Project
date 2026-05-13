@@ -1,6 +1,17 @@
 [gd_scene format=3 uid="uid://bvkmk4p3xbo26"]
 
+[ext_resource type="Script" uid="uid://fxx0uycph8gj" path="res://scripts/level/BaseLevelController.cs" id="1_3djnq"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_gtsne"]
+size = Vector2(91, 80)
+
+[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_bvut3"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_sipn2"]
+size = Vector2(930, 94)
+
 [node name="Level4" type="Node2D" unique_id=1929057800]
+script = ExtResource("1_3djnq")
 
 [node name="Sprite2D" type="Sprite2D" parent="." unique_id=2110148202]
 position = Vector2(461, 190)
@@ -22,3 +33,30 @@ size_flags_horizontal = 3
 size_flags_vertical = 3
 theme_override_font_sizes/font_size = 200
 text = "4"
+
+[node name="End" type="Area2D" parent="." unique_id=1984585597]
+unique_name_in_owner = true
+position = Vector2(878, 388)
+
+[node name="collion" type="CollisionShape2D" parent="End" unique_id=374686973]
+position = Vector2(-35.5, -30)
+shape = SubResource("RectangleShape2D_gtsne")
+
+[node name="Begin" type="Node2D" parent="." unique_id=269552229]
+unique_name_in_owner = true
+position = Vector2(143, 343)
+
+[node name="StaticBody2D" type="StaticBody2D" parent="." unique_id=718585586]
+position = Vector2(82, 436)
+physics_material_override = SubResource("PhysicsMaterial_bvut3")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="StaticBody2D" unique_id=167993352]
+position = Vector2(389, 39)
+shape = SubResource("RectangleShape2D_sipn2")
+
+[node name="ColorRect" type="ColorRect" parent="StaticBody2D" unique_id=2033269512]
+offset_left = -75.0
+offset_top = -7.0
+offset_right = 852.0
+offset_bottom = 86.0
+metadata/_edit_use_anchors_ = true

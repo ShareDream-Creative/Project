@@ -1,4 +1,4 @@
-using GFramework.Core.Coroutine.Instructions;
+﻿using GFramework.Core.Coroutine.Instructions;
 using GFramework.Core.Abstractions.State;
 using GFramework.Game.Abstractions.Enums;
 using GFramework.Game.Abstractions.UI;
@@ -12,6 +12,7 @@ using GFrameworkGodotTemplate.scripts.credits;
 using GFrameworkGodotTemplate.scripts.enums.scene;
 using GFrameworkGodotTemplate.scripts.enums.ui;
 using GFrameworkGodotTemplate.scripts.level;
+using GFrameworkGodotTemplate.scripts.level.controllers;
 using Godot;
 
 namespace GFrameworkGodotTemplate.scripts.main_menu;

@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://dqn7cls75lvq5"]
 
-[ext_resource type="Script" uid="uid://b50x7kvbom15q" path="res://scripts/level/LevelPlayUi.cs" id="1_n5g7l"]
+[ext_resource type="Script" uid="uid://drieuosy75ktf" path="res://scripts/level/ui/LevelPlayUi.cs" id="1_n5g7l"]
 
 [node name="LevelPlayUi" type="Control" unique_id=124944176]
 layout_mode = 3

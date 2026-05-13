@@ -1,6 +1,6 @@
 [gd_scene format=3 uid="uid://d0qmei4jkw44s"]
 
-[ext_resource type="Script" uid="uid://3tb7rrn68vcw" path="res://scripts/level/LevelPlay.cs" id="1_gbikr"]
+[ext_resource type="Script" uid="uid://fxx0uycph8gj" path="res://scripts/level/BaseLevelController.cs" id="1_6huxq"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_6huxq"]
 size = Vector2(91, 80)
@@ -11,7 +11,7 @@ size = Vector2(91, 80)
 size = Vector2(930, 94)
 
 [node name="LevelPlay" type="Node2D" unique_id=1122537427]
-script = ExtResource("1_gbikr")
+script = ExtResource("1_6huxq")
 
 [node name="Sprite2D" type="Sprite2D" parent="." unique_id=1729069593]
 position = Vector2(461, 190)

@@ -1,5 +1,6 @@
 [gd_scene format=3 uid="uid://dhf4oxywyjb8q"]
 
+[ext_resource type="Script" uid="uid://bg3w7i73eaeux" path="res://scripts/level/ui/LevelDefateUi.cs" id="1_lrqif"]
 [ext_resource type="Theme" uid="uid://drg0lvsgoqfsc" path="res://resource/theme/project_theme.tres" id="1_wqf4v"]
 
 [node name="LevelDefateUi" type="Control" unique_id=500503676]
@@ -13,6 +14,7 @@ offset_right = 1.0
 offset_bottom = 2.0
 grow_horizontal = 2
 grow_vertical = 2
+script = ExtResource("1_lrqif")
 
 [node name="ColorRect" type="ColorRect" parent="." unique_id=1679666424]
 layout_mode = 1

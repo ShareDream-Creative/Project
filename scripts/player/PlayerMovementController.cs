@@ -6,6 +6,7 @@ using GFrameworkGodotTemplate.scripts.data.interfaces;
 using GFrameworkGodotTemplate.scripts.data.model;
 using GFrameworkGodotTemplate.scripts.player.interfaces;
 using GFrameworkGodotTemplate.scripts.player.input;
+using GFrameworkGodotTemplate.scripts.player.listeners;
 using GFrameworkGodotTemplate.scripts.player.physics;
 using GFrameworkGodotTemplate.scripts.player.state;
 using Godot;
@@ -101,7 +102,7 @@ namespace GFrameworkGodotTemplate.scripts.player;
 /// </summary>
 [ContextAware]
 [Log]
-public partial class PlayerMovementController : CharacterBody2D, IController, IPlayerDataListener
+public partial class PlayerMovementController : CharacterBody2D, IController
 {
 	#region 导出属性配置 (编辑器调试用)
 
@@ -227,7 +228,7 @@ public partial class PlayerMovementController : CharacterBody2D, IController, IP
 	///     <para>
 	///         来自GlobalInputController的输入数据源
 	///         提供统一的游戏玩法输入状态查询
-	///     </para>
+	 ///     </para>
 	///     <remarks>
 	///         获取方式: FindGameplayInputService()从场景树查找
 	///         来源: GlobalInputController.GameplayInputService属性
@@ -259,6 +260,24 @@ public partial class PlayerMovementController : CharacterBody2D, IController, IP
 	///     </remarks>
 	/// </summary>
 	private PlayerDataManager? _dataManager;
+
+	/// <summary>
+	///     数据监听器桥接器实例
+	///     <para>
+	///         负责将PlayerData变更事件桥接到日志系统
+	///         实现关注点分离，提升代码内聚性
+	///     </para>
+	///     <remarks>
+	///         创建时机: InitializeDataManager()中创建
+	///         类型: PlayerDataListenerBridge (实现IPlayerDataListener接口)
+	///         
+	///         功能:
+	///         - 监控Speed/JumpVelocity/Gravity/SprintMultiplier变化
+	///         - 输出变更日志用于调试和监控
+	///         - 可独立测试和替换
+	///     </remarks>
+	/// </summary>
+	private PlayerDataListenerBridge? _dataListenerBridge;
 
 	#endregion
 
@@ -463,10 +482,18 @@ public partial class PlayerMovementController : CharacterBody2D, IController, IP
 	{
 		if (_dataManager == null) return;
 		
-		// 注册自身为数据监听器(用于日志记录)
-		_dataManager.Data.AddListener(this);
+		// 创建数据监听器桥接器（用于日志记录）
+		_dataListenerBridge = new PlayerDataListenerBridge(
+			msg => _log.Info(msg),
+			msg => _log.Warn(msg),
+			msg => _log.Error(msg),
+			msg => _log.Debug(msg)
+		);
 		
-		_log.Debug("已注册PlayerMovementController为PlayerData监听器");
+		// 注册监听器桥接器为数据监听器
+		_dataManager.Data.AddListener(_dataListenerBridge);
+		
+		_log.Debug("已注册PlayerDataListenerBridge为PlayerData监听器");
 	}
 
 	/// <summary>
@@ -776,81 +803,6 @@ public partial class PlayerMovementController : CharacterBody2D, IController, IP
 
 	#endregion
 
-	#region IPlayerDataListener 实现 (用于日志和调试)
-
-	/// <summary>
-	///     监听速度变化事件
-	///     <para>
-	///         当PlayerData.Speed属性变更时自动调用
-	///         主要用于日志记录和调试监控
-	 ///     </para>
-	///     <param name="oldValue">变化前的速度值</param>
-	///     <param name="newValue">变化后的速度值</param>
-	///     <remarks>
-	///         当前行为: 仅输出INFO级别日志
-	///         未来扩展: 可能用于触发UI更新或动画调整
-	///         
-	///         日志格式: [PlayerMovementController] 检测到速度变化: {old} → {new}
-	///     </remarks>
-	/// </summary>
-	public void OnSpeedChanged(float oldValue, float newValue)
-	{
-		_log.Info($"[PlayerMovementController] 检测到速度变化: {oldValue} → {newValue}");
-	}
-
-	/// <summary>
-	///     监听跳跃速度变化事件
-	///     <para>
-	///         当PlayerData.JumpVelocity属性变更时自动调用
-	///     </para>
-	///     <param name="oldValue">变化前的跳跃速度值</param>
-	///     <param name="newValue">变化后的跳跃速度值</param>
-	///     <remarks>
-	///         当前行为: 仅输出INFO级别日志
-	///         未来扩展: 可能用于重新计算跳跃高度预览
-	///     </remarks>
-	/// </summary>
-	public void OnJumpVelocityChanged(float oldValue, float newValue)
-	{
-		_log.Info($"[PlayerMovementController] 检测到跳跃速度变化: {oldValue} → {newValue}");
-	}
-
-	/// <summary>
-	///     监听重力变化事件
-	///     <para>
-	///         当PlayerData.Gravity属性变更时自动调用
-	///     </para>
-	///     <param name="oldValue">变化前的重力值</param>
-	///     <param name="newValue">变化后的重力值</param>
-	///     <remarks>
-	///         当前行为: 仅输出INFO级别日志
-	///         未来扩展: 可能用于调整下落动画效果
-	///     </remarks>
-	/// </summary>
-	public void OnGravityChanged(float oldValue, float newValue)
-	{
-		_log.Info($"[PlayerMovementController] 检测到重力变化: {oldValue} → {newValue}");
-	}
-
-	/// <summary>
-	///     监听奔跑倍率变化事件
-	///     <para>
-	///         当PlayerData.SprintMultiplier属性变更时自动调用
-	///     </para>
-	///     <param name="oldValue">变化前的奔跑倍率</param>
-	///     <param name="newValue">变化后的奔跑倍率</param>
-	///     <remarks>
-	///         当前行为: 仅输出INFO级别日志
-	///         未来扩展: 可能用于更新UI显示的实际速度
-	///     </remarks>
-	/// </summary>
-	public void OnSprintMultiplierChanged(float oldValue, float newValue)
-	{
-		_log.Info($"[PlayerMovementController] 检测到奔跑倍率变化: {oldValue} → {newValue}");
-	}
-
-	#endregion
-
 	#region 资源清理
 
 	/// <summary>
@@ -888,7 +840,10 @@ public partial class PlayerMovementController : CharacterBody2D, IController, IP
 	{
 		if (_dataManager != null)
 		{
-			_dataManager.Data.RemoveListener(this);
+			// 移除监听器桥接器
+			_dataManager.Data.RemoveListener(_dataListenerBridge);
+			
+			// 移除子模块的监听器
 			_dataManager.Data.RemoveListener((IPlayerDataListener)_inputHandler);
 			_dataManager.Data.RemoveListener(_physicsMovement);
 			
