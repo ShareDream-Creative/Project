@@ -1,3 +1,48 @@
 [gd_scene format=3 uid="uid://cx7c51x0enuxd"]
 
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_sr71t"]
+size = Vector2(979, 139)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_oqg8q"]
+size = Vector2(91, 80)
+
+[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_i4q6f"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_kv03g"]
+size = Vector2(930, 94)
+
 [node name="TeachLevel" type="Node2D" unique_id=1702853114]
+
+[node name="defeat" type="Area2D" parent="." unique_id=797911743]
+unique_name_in_owner = true
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="defeat" unique_id=1198561005]
+position = Vector2(484.5, 640.5)
+shape = SubResource("RectangleShape2D_sr71t")
+
+[node name="End" type="Area2D" parent="." unique_id=525166951]
+unique_name_in_owner = true
+position = Vector2(878, 388)
+
+[node name="collion" type="CollisionShape2D" parent="End" unique_id=858744865]
+position = Vector2(-35.5, -30)
+shape = SubResource("RectangleShape2D_oqg8q")
+
+[node name="Begin" type="Node2D" parent="." unique_id=667046448]
+unique_name_in_owner = true
+position = Vector2(143, 343)
+
+[node name="StaticBody2D" type="StaticBody2D" parent="." unique_id=1658638913]
+position = Vector2(82, 436)
+physics_material_override = SubResource("PhysicsMaterial_i4q6f")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="StaticBody2D" unique_id=86993277]
+position = Vector2(389, 39)
+shape = SubResource("RectangleShape2D_kv03g")
+
+[node name="ColorRect" type="ColorRect" parent="StaticBody2D" unique_id=1459293986]
+offset_left = -75.0
+offset_top = -7.0
+offset_right = 852.0
+offset_bottom = 86.0
+metadata/_edit_use_anchors_ = true

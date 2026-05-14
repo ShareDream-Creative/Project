@@ -1,3 +1,4 @@
+using System;
 using GFramework.Core.Abstractions.State;
 using GFrameworkGodotTemplate.global;
 using GFrameworkGodotTemplate.scripts.core.state.impls;
@@ -19,7 +20,7 @@ namespace GFrameworkGodotTemplate.scripts.player;
 ///         协调输入处理、物理运动、状态控制三个子模块的工作
 ///         实现完整的玩家角色2D物理移动系统
 ///     </para>
-///     <author>AI Assistant</author>
+///     <author></author>
 ///     <version>2.1.0</version>
 ///     <date>2026-05-11</date>
 ///     <description>
@@ -36,73 +37,10 @@ namespace GFrameworkGodotTemplate.scripts.player;
 ///         - 观察者模式(Observer): 实现IPlayerDataListener接口监听数据变更
 ///         - 单一职责(SRP): 本类只负责协调，具体逻辑委托给子模块
 ///     </description>
-///     <remarks>
-///         设计优势:
-///         1. 解耦: 各子模块独立可测试，降低耦合度
-///         2. 可扩展: 可轻松替换或新增子模块
-///         3. 可维护: 清晰的职责划分便于维护
-///         4. 数据驱动: 运行时可从PlayerData动态调整参数
-///         
-///         数据流向图:
-///         ┌─────────────────────────────────────────┐
-///         │       PlayerMovementController          │
-///         │  (组合器 - 协调中心)                     │
-///         └────────┬────────┬────────┬──────────────┘
-///                  │        │        │
-///         ┌────────▼──┐ ┌──▼──────┐ │ ┌────────────▼──┐
-///         │ InputHandler│ │Physics │ │ │ StateController│
-///         │ (输入处理) │ │Movement │ │ │ (状态控制)    │
-///         └─────┬──────┘ └───┬────┘ │ └───────┬────────┘
-///               │             │      │         │
-///               ▼             ▼      │         ▼
-///         GlobalInputService  │      │   IStateMachineSystem
-///               │             │      │
-///               └──────┬──────┘      │
-///                      ▼             │
-///              CharacterBody2D ◄─────┘
-///              (MoveAndSlide执行)
-///         
-///         子模块说明:
-///         - IPlayerInputHandler: 处理键盘/手柄输入检测
-///         - IPlayerPhysicsMovement: 物理速度计算和碰撞响应
-///         - IPlayerStateController: 基于游戏状态的输入控制权管理
-///         
-///         使用示例:
-///         <code>
-///         // 此类作为Godot节点挂载到场景中
-///         // 在gametest.tscn中添加CharacterBody2D节点
-///         // 并将此脚本附加到该节点上
-///         
-///         // 编辑器中配置Export属性 (可选)
-///         // Speed = 300.0 (运行时会被PlayerDataManager覆盖)
-///         // JumpVelocity = -500.0
-///         // Gravity = 980.0
-///         
-///         // 运行时自动初始化所有子模块
-///         // 无需手动配置
-///         </code>
-///         
-///         配置优先级:
-///         1. PlayerDataManager.Data (最高优先级, 运行时值)
-///         2. Export属性 (编辑器配置, 调试用)
-///         3. 代码默认值 (最低优先级)
-///         
-///         性能优化:
-///         - 所有物理计算在_PhysicsProcess中执行 (固定时间步长)
-///         - 避免在单帧内重复计算
-///         - 使用缓存减少GC压力
-///         - 子模块采用轻量级设计，无虚方法调用开销
-///         
-///         注意事项:
-///         - 必须作为CharacterBody2D节点的脚本使用
-///         - 依赖GlobalInputController AutoLoad节点
-///         - 依赖PlayerDataManager全局单例
-///         - 依赖GFramework IStateMachineSystem服务
-///     </remarks>
 /// </summary>
 [ContextAware]
 [Log]
-public partial class PlayerMovementController : CharacterBody2D, IController
+public partial class PlayerMovementController : CharacterBody2D, IController, IPlayerDataListener
 {
 	#region 导出属性配置 (编辑器调试用)
 
@@ -117,10 +55,33 @@ public partial class PlayerMovementController : CharacterBody2D, IController
 	///         默认值: PlayerData.DEFAULT_SPEED = 300.0
 	///         用途: 编辑器中快速测试不同速度手感
 	///         
+	///         ✨ 增强功能:
+	///         在Godot Inspector中修改此属性时，会自动实时同步到物理模块
+	///         无需重启游戏或手动刷新，修改立即生效
+	///         
 	///         注意: 正式环境应通过PlayerDataManager配置此值
 	///     </remarks>
 	/// </summary>
-	[Export] public float Speed { get; set; } = PlayerData.DEFAULT_SPEED;
+	private float _speedExport = PlayerData.DEFAULT_SPEED;
+	
+	[Export]
+	public float Speed
+	{
+		get => _speedExport;
+		set
+		{
+			if (Math.Abs(_speedExport - value) < 0.001f) return;
+			
+			var oldValue = _speedExport;
+			_speedExport = value;
+			
+			if (_physicsMovement != null)
+			{
+				_physicsMovement.Speed = value;
+				GD.Print($"[PlayerMovementController] 🎮 Inspector修改速度: {oldValue:F1} → {value:F1} (已实时同步到物理模块)");
+			}
+		}
+	}
 
 	/// <summary>
 	///     跳跃力度 (像素/秒) - 编辑器调试用
@@ -132,9 +93,32 @@ public partial class PlayerMovementController : CharacterBody2D, IController
 	///         取值范围: [-MAX_JUMP_VELOCITY_ABS, -MIN_JUMP_VELOCITY_ABS] = [-1000, -200]
 	///         默认值: PlayerData.DEFAULT_JUMP_VELOCITY = -500.0
 	///         当前配置跳跃高度 ≈ 127.5 像素
+	///         
+	///         ✨ 增强功能:
+	///         在Godot Inspector中修改此属性时，会自动实时同步到物理模块
+	///         无需重启游戏或手动刷新，修改立即生效
 	///     </remarks>
 	/// </summary>
-	[Export] public float JumpVelocity { get; set; } = PlayerData.DEFAULT_JUMP_VELOCITY;
+	private float _jumpVelocityExport = PlayerData.DEFAULT_JUMP_VELOCITY;
+	
+	[Export]
+	public float JumpVelocity
+	{
+		get => _jumpVelocityExport;
+		set
+		{
+			if (Math.Abs(_jumpVelocityExport - value) < 0.001f) return;
+			
+			var oldValue = _jumpVelocityExport;
+			_jumpVelocityExport = value;
+			
+			if (_physicsMovement != null)
+			{
+				_physicsMovement.JumpVelocity = value;
+				GD.Print($"[PlayerMovementController] 🎮 Inspector修改跳跃速度: {oldValue:F1} → {value:F1} (已实时同步到物理模块)");
+			}
+		}
+	}
 
 	/// <summary>
 	///     重力加速度 (像素/秒²) - 编辑器调试用
@@ -145,9 +129,32 @@ public partial class PlayerMovementController : CharacterBody2D, IController
 	///     <remarks>
 	///         取值范围: [PlayerData.MIN_GRAVITY, PlayerData.MAX_GRAVITY] = [100, 3000]
 	///         默认值: PlayerData.DEFAULT_GRAVITY = 980.0 (接近真实地球重力)
+	///         
+	///         ✨ 增强功能:
+	///         在Godot Inspector中修改此属性时，会自动实时同步到物理模块
+	///         无需重启游戏或手动刷新，修改立即生效
 	///     </remarks>
 	/// </summary>
-	[Export] public float Gravity { get; set; } = PlayerData.DEFAULT_GRAVITY;
+	private float _gravityExport = PlayerData.DEFAULT_GRAVITY;
+	
+	[Export]
+	public float Gravity
+	{
+		get => _gravityExport;
+		set
+		{
+			if (Math.Abs(_gravityExport - value) < 0.001f) return;
+			
+			var oldValue = _gravityExport;
+			_gravityExport = value;
+			
+			if (_physicsMovement != null)
+			{
+				_physicsMovement.Gravity = value;
+				GD.Print($"[PlayerMovementController] 🎮 Inspector修改重力: {oldValue:F1} → {value:F1} (已实时同步到物理模块)");
+			}
+		}
+	}
 
 	#endregion
 
@@ -179,20 +186,6 @@ public partial class PlayerMovementController : CharacterBody2D, IController
 	///         负责物理速度计算和碰撞响应
 	///         基于Godot CharacterBody2D的移动系统
 	///     </para>
-	///     <remarks>
-	///         创建时机: InitializeModules()中创建
-	///         类型: PlayerPhysicsMovement (实现IPlayerPhysicsMovement接口)
-	///         依赖: 无外部依赖 (纯逻辑类)
-	///         
-	///         功能:
-	///         - 重力应用 (ApplyGravity)
-	///         - 水平速度计算 (UpdateHorizontalVelocity)
-	///         - 跳跃执行 (TryJump)
-	///         - 移动和碰撞 (Move)
-	///         - 立即停止 (StopImmediately)
-	///         
-	///         数据来源: 从PlayerData自动同步属性值
-	///     </remarks>
 	/// </summary>
 	private PlayerPhysicsMovement? _physicsMovement;
 
@@ -202,20 +195,6 @@ public partial class PlayerMovementController : CharacterBody2D, IController
 	///         负责基于游戏状态的输入控制权管理
 	///         仅在PlayingState时允许输入
 	///     </para>
-	///     <remarks>
-	///         创建时机: InitializeModules()中创建
-	///         类型: PlayerStateController (实现IPlayerStateController接口)
-	///         依赖: 需要IStateMachineSystem实例
-	///         
-	///         功能:
-	///         - 状态查询 (UpdateState)
-	///         - 输入控制权判断 (IsInputEnabled)
-	///         - 状态机注入 (SetStateMachineSystem)
-	///         
-	///         状态映射:
-	///         PlayingState → IsInputEnabled=true
-	///         其他状态 → IsInputEnabled=false
-	///     </remarks>
 	/// </summary>
 	private IPlayerStateController? _stateController;
 
@@ -229,15 +208,6 @@ public partial class PlayerMovementController : CharacterBody2D, IController
 	///         来自GlobalInputController的输入数据源
 	///         提供统一的游戏玩法输入状态查询
 	 ///     </para>
-	///     <remarks>
-	///         获取方式: FindGameplayInputService()从场景树查找
-	///         来源: GlobalInputController.GameplayInputService属性
-	///         生命周期: 随GlobalInputController AutoLoad节点存在
-	///         
-	///         用途:
-	///         - 注入给PlayerInputHandler作为输入数据源
-	///         - 提供水平方向、跳跃按键等输入状态
-	///     </remarks>
 	/// </summary>
 	private IGlobalGameplayInputService? _globalInputService;
 
@@ -247,17 +217,6 @@ public partial class PlayerMovementController : CharacterBody2D, IController
 	///         负责PlayerData的生命周期管理和持久化存储
 	///         提供统一的玩家配置数据访问点
 	///     </para>
-	///     <remarks>
-	///         获取方式: PlayerDataManager.Instance (线程安全单例)
-	///         类型: PlayerDataManager (单例模式)
-	///         生命周期: 全局唯一，贯穿整个游戏运行周期
-	///         
-	///         用途:
-	///         - 加载玩家配置数据 (懒加载 + ConfigFile持久化)
-	///         - 注册/移除数据监听器
-	///         - 同步配置到物理模块
-	///         - 监听数据变更日志记录
-	///     </remarks>
 	/// </summary>
 	private PlayerDataManager? _dataManager;
 
@@ -267,15 +226,6 @@ public partial class PlayerMovementController : CharacterBody2D, IController
 	///         负责将PlayerData变更事件桥接到日志系统
 	///         实现关注点分离，提升代码内聚性
 	///     </para>
-	///     <remarks>
-	///         创建时机: InitializeDataManager()中创建
-	///         类型: PlayerDataListenerBridge (实现IPlayerDataListener接口)
-	///         
-	///         功能:
-	///         - 监控Speed/JumpVelocity/Gravity/SprintMultiplier变化
-	///         - 输出变更日志用于调试和监控
-	///         - 可独立测试和替换
-	///     </remarks>
 	/// </summary>
 	private PlayerDataListenerBridge? _dataListenerBridge;
 
@@ -289,25 +239,6 @@ public partial class PlayerMovementController : CharacterBody2D, IController
 	///         Godot引擎在节点加入场景树后自动调用
 	///         执行所有子模块的初始化和配置工作
 	///     </para>
-	///     <remarks>
-	///         初始化顺序:
-	///         1. base._Ready() - 调用父类初始化
-	///         2. InitializeGlobalServices() - 获取全局服务引用
-	///         3. InitializeDataManager() - 初始化数据管理器和监听
-	///         4. InitializeModules() - 创建并配置所有子模块
-	///         5. SyncConfigurationToModules() - 同步配置数据到物理模块
-	///         6. 输出初始化完成日志
-	///         
-	///         错误处理:
-	///         - 全局输入服务缺失: 记录错误日志，后续抛出异常
-	///         - 数据管理器不可用: 记录警告，回退到本地配置
-	///         - 状态机系统不可用: 记录警告，禁用输入
-	///         
-	///         性能说明:
-	///         - 此方法仅在节点就绪时调用一次
-	///         - 包含IO操作(首次访问PlayerDataManager可能触发文件加载)
-	///         - 应避免在此方法中执行耗时操作
-	///     </remarks>
 	/// </summary>
 	public override void _Ready()
 	{
@@ -331,23 +262,6 @@ public partial class PlayerMovementController : CharacterBody2D, IController
 	///         Godot引擎在节点即将销毁前自动调用
 	///         执行资源清理工作，防止内存泄漏
 	///     </para>
-	///     <remarks>
-	///         清理内容:
-	///         - 移除自身对PlayerData的监听
-	///         - 移除所有子模块对PlayerData的监听
-	///         - 释放全局服务引用
-	///         
-	///         重要性:
-	///         如果不正确清理监听器，可能导致：
-	///         - 内存泄漏 (被监听的对象无法被GC回收)
-	///         - 异常调用 (已销毁对象仍收到回调)
-	///         
-	///         调用时机:
-	///         Godot引擎在以下情况会调用此方法:
-	///         - 场景切换时
-	///         - 节点QueueFree()后
-	///         - 场景树重建时
-	///     </remarks>
 	/// </summary>
 	public override void _ExitTree()
 	{
@@ -364,24 +278,6 @@ public partial class PlayerMovementController : CharacterBody2D, IController
 	///     距离上一帧的时间间隔 (秒)
 	///     通常为 1/60 ≈ 0.0167秒 (60FPS时)
 	///     </param>
-	///     <remarks>
-	///         执行流程:
-	///         1. UpdateStateAndInput(delta) - 更新状态和输入缓存
-	///         2. 检查IsInputEnabled - 判断是否允许输入
-	///            - 如果禁止: 停止移动并返回
-	///            - 如果允许: 继续下一步
-	///         3. ProcessMovement(delta) - 执行完整移动逻辑
-	///         
-	///         为什么选择_PhysicsProcess而非_Process:
-	///         - 固定时间步长，物理模拟更稳定
-	///         - 与MoveAndSlide配合更好
-	///         - 不受帧率波动影响
-	///         
-	///         性能考虑:
-	///         - 此方法是性能热点，应保持高效
-	///         - 避免在此方法中进行内存分配
-	///         - 避免调用耗时的API
-	///     </remarks>
 	/// </summary>
 	public override void _PhysicsProcess(double delta)
 	{
@@ -409,25 +305,6 @@ public partial class PlayerMovementController : CharacterBody2D, IController
 	///         获取全局输入服务和数据管理器的引用
 	///         为后续模块初始化做准备
 	///     </para>
-	///     <remarks>
-	///         获取的服务:
-	///         1. IGlobalGameplayInputService - 全局输入服务
-	///            来源: GlobalInputController.AutoLoad节点
-	///            方法: FindGameplayInputService()
-	///            
-	///         2. PlayerDataManager - 数据管理器单例
-	///            来源: PlayerDataManager.Instance (静态属性)
-	///            方法: 直接访问 (线程安全)
-	///         
-	///         错误处理:
-	///         - 输入服务获取失败: 记录ERROR级别日志
-	///           后续InitializeModules()会抛出异常
-	///         - 数据管理器获取失败: 记录WARN级别日志
-	///           后续回退到本地配置
-	///         
-	///         调用时机:
-	///         在_Ready()中最先调用，确保其他初始化有依赖可用
-	///     </remarks>
 	/// </summary>
 	private void InitializeGlobalServices()
 	{
@@ -459,24 +336,6 @@ public partial class PlayerMovementController : CharacterBody2D, IController
 	///         将本控制器注册为PlayerData的监听器
 	///         用于接收数据变更通知并进行日志记录
 	///     </para>
-	///     <remarks>
-	///         注册目的:
-	///         - 监控玩家配置数据的实时变化
-	///         - 输出详细的变更日志用于调试
-	///         - 未来可用于触发UI更新或其他业务逻辑
-	///         
-	///         注册对象:
-	///         - this (PlayerMovementController本身)
-	///           用于日志记录和调试监控
-	///         
-	///         安全检查:
-	///         - 检查_dataManager是否为null
-	///         - 为null时跳过注册（避免NullReferenceException）
-	///         
-	///         调用时机:
-	///         在InitializeGlobalServices()之后调用
-	///         确保数据管理器已经获取成功
-	///     </remarks>
 	/// </summary>
 	private void InitializeDataManager()
 	{
@@ -493,7 +352,10 @@ public partial class PlayerMovementController : CharacterBody2D, IController
 		// 注册监听器桥接器为数据监听器
 		_dataManager.Data.AddListener(_dataListenerBridge);
 		
-		_log.Debug("已注册PlayerDataListenerBridge为PlayerData监听器");
+		// 注册自身为数据监听器（实现Export属性→PhysicsModule的双向同步）
+		_dataManager.Data.AddListener(this);
+		
+		_log.Debug("已注册PlayerDataListenerBridge和PlayerMovementController为PlayerData监听器");
 	}
 
 	/// <summary>
@@ -506,29 +368,6 @@ public partial class PlayerMovementController : CharacterBody2D, IController
 	///     成功时返回IGlobalGameplayInputService实例
 	///     失败时返回null (节点不存在或服务未初始化)
 	///     </returns>
-	///     <remarks>
-	///         查找路径: /root/GlobalInputController (AutoLoad节点)
-	///         
-	///         查找步骤:
-	///         1. 获取当前SceneTree引用
-	///         2. 从根节点(/root)查找GlobalInputController
-	///         3. 检查其GameplayInputService属性是否可用
-	///         4. 返回服务实例或null
-	///         
-	///         异常处理:
-	///         - SceneTree为null: 记录错误并返回null
-	///         - GetNode失败: 捕获异常并返回null
-	///         - 服务为null: 返回null (不是错误)
-	///         
-	///         可能失败的原因:
-	///         - GlobalInputController未注册为AutoLoad
-	///         - 节点名称不匹配
-	///         - 服务尚未初始化完成
-	///         
-	///         性能说明:
-	///         此方法仅调用一次 (在_Ready中)
-	///         不会造成性能问题
-	///     </remarks>
 	/// </summary>
 	private IGlobalGameplayInputService? FindGameplayInputService()
 	{
@@ -568,31 +407,6 @@ public partial class PlayerMovementController : CharacterBody2D, IController
 	///         注入必要的依赖项
 	///         注册数据监听器实现自动同步
 	///     </para>
-	///     <remarks>
-	///         创建顺序和依赖关系:
-	///         1. PlayerInputHandler ← 需要 _globalInputService
-	///         2. PlayerPhysicsMovement ← 无外部依赖
-	///         3. PlayerStateController ← 需要 IStateMachineSystem
-	///         
-	///         依赖注入详情:
-	///         - InputHandler: 构造函数注入IGlobalGameplayInputService
-	///         - PhysicsMovement: 无需注入 (纯逻辑类)
-	///         - StateController: 方法注入IStateMachineSystem
-	///         
-	///         监听器注册:
-	///         将所有子模块注册为PlayerData的监听器:
-	///         - InputHandler → 自动同步SprintMultiplier等配置
-	///         - PhysicsMovement → 自动同步Speed/JumpVelocity/Gravity
-	///         
-	///         错误处理:
-	///         - 全局输入服务为null: 抛出InvalidOperationException
-	///           这是致命错误，输入处理器无法工作
-	///         - 状态机系统为null: 记录警告，输入将被完全禁用
-	///           这不是致命错误，只是功能受限
-	///         
-	///         调用时机:
-	///         在_Ready()中，InitializeGlobalServices()之后调用
-	///     </remarks>
 	/// </summary>
 	private void InitializeModules()
 	{
@@ -633,33 +447,6 @@ public partial class PlayerMovementController : CharacterBody2D, IController
 	///         从PlayerDataManager加载最新配置数据
 	///         并同步到PlayerPhysicsMovement模块
 	///     </para>
-	///     <remarks>
-	///         配置优先级:
-	///         1. PlayerDataManager.Data (最高优先级)
-	///            - 来自ConfigFile持久化存储
-	///            - 经过验证的有效值
-	///            - 包含用户自定义设置
-	///            
-	///         2. Export属性 (中等优先级)
-	///            - 编辑器中的调试配置
-	///            - 仅在PlayerDataManager不可用时使用
-	///            
-	///         3. 代码默认值 (最低优先级)
-	///            - PlayerData类中定义的DEFAULT_*常量
-	///            - 作为最终兜底方案
-	///         
-	///         同步内容:
-	///         - Speed: 水平移动速度
-	///         - JumpVelocity: 跳跃初速度
-	///         - Gravity: 重力加速度
-	///         
-	///         日志输出:
-	///         - 成功: 输出DEBUG级别日志显示同步的值
-	///         - 回退: 输出WARN级别日志提示使用本地配置
-	///         
-	///         调用时机:
-	///         在_Ready()中最后调用，确保所有模块已创建完毕
-	///     </remarks>
 	/// </summary>
 	private void SyncConfigurationToModules()
 	{
@@ -694,30 +481,6 @@ public partial class PlayerMovementController : CharacterBody2D, IController
 	///         为后续的移动计算提供最新的输入数据
 	///     </para>
 	///     <param name="delta">当前帧的时间间隔(秒)</param>
-	///     <remarks>
-	///         更新顺序:
-	///         1. _stateController.UpdateState()
-	///            - 检测当前游戏状态
-	///            - 更新IsInputEnabled标志
-	///            - 决定是否允许输入
-	///            
-	///         2. _inputHandler.UpdateInput()
-	///            - 刷新输入状态缓存
-	///            - 检测奔跑键状态
-	///            - 准备好供本帧使用的输入数据
-	///         
-	///         为什么先更新状态再更新输入:
-	///         - 状态决定是否应该处理输入
-	///         - 即使不处理输入也需要更新状态
-	///         - 保持逻辑清晰和数据一致性
-	///         
-	///         参数delta的用途:
-	///         当前未直接使用，保留用于未来扩展
-	///         例如: 输入插值、输入缓冲等
-	///         
-	///         性能说明:
-	///         此方法非常轻量，两个Update调用都是O(1)复杂度
-	///     </remarks>
 	/// </summary>
 	private void UpdateStateAndInput(float delta)
 	{
@@ -732,55 +495,6 @@ public partial class PlayerMovementController : CharacterBody2D, IController
 	///         协调所有子模块完成一帧的物理移动计算
 	///     </para>
 	///     <param name="delta">当前帧的时间间隔(秒)</param>
-	///     <remarks>
-	///         执行流程 (严格顺序):
-	///         
-	///         Step 1: 应用重力
-	///         _physicsMovement.ApplyGravity(delta)
-	///         - 仅在空中时累加重力加速度
-	///         - 使用欧拉积分法更新垂直速度
-	///         
-	///         Step 2: 获取输入状态
-	///         var isSprinting = _inputHandler.IsSprinting;
-	///         var sprintMultiplier = _inputHandler.CachedSprintMultiplier;
-	///         - 从输入模块读取奔跑状态
-	///         - 从输入模块读取缓存的奔跑倍率
-	///         - 通过接口访问，无需类型转换 ✅
-	///         
-	///         Step 3: 更新水平速度
-	///         _physicsMovement.UpdateHorizontalVelocity(direction, isSprinting, sprintMultiplier)
-	///         - 根据方向和奔跑状态计算实际速度
-	///         - 奔跑时: speed * sprintMultiplier
-	///         - 无输入时: 平滑减速到0
-	///         
-	///         Step 4: 尝试跳跃
-	///         if (_inputHandler.IsJumpPressed && _physicsMovement.TryJump())
-	///         - 检测跳跃按键 (单次触发)
-	///         - 检查是否在地面上
-	///         - 设置跳跃初速度
-	///         
-	///         Step 5: 执行移动
-	///         _physicsMovement.Move(this)
-	///         - 将速度应用到CharacterBody2D
-	///         - 调用MoveAndSlide处理碰撞
-	///         - 更新地面检测状态
-	///         
-	///         数据流向图:
-	///         InputHandler ──→ PhysicsMovement ──→ CharacterBody2D
-	///         (输入检测)     (物理计算)           (执行移动)
-	///              ↑                                  │
-	///              └──── StateController (输入控制权) ─┘
-	///         
-	///         奔跑系统集成:
-	///         - Shift键按下 → isSprinting=true
-	///         - true → actualSpeed = Speed * SprintMultiplier
-	///         - false → actualSpeed = Speed (正常速度)
-	///         
-	///         性能优化:
-	///         - 所有计算都在栈上完成，无堆分配
-	///         - 避免不必要的条件分支
-	///         - 利用CPU缓存局部性
-	///     </remarks>
 	/// </summary>
 	private void ProcessMovement(float delta)
 	{
@@ -810,36 +524,14 @@ public partial class PlayerMovementController : CharacterBody2D, IController
 	///     <para>
 	///         在节点销毁前调用，防止内存泄漏和悬空引用
 	///     </para>
-	///     <remarks>
-	///         清理内容:
-	///         1. 移除自身对PlayerData的监听
-	///            - 避免本对象被回收后仍收到回调
-	///            
-	///         2. 移除InputHandler对PlayerData的监听
-	///            - 避免输入模块被回收后仍收到回调
-	///            
-	///         3. 移除PhysicsMovement对PlayerData的监听
-	///            - 避免物理模块被回收后仍收到回调
-	///         
-	///         为什么必须清理:
-	///         - PlayerData持有监听器的强引用
-	///         - 如果不移除，监听器对象无法被GC回收
-	///         - 导致内存泄漏，特别是频繁创建/销毁角色时
-	///         
-	///         安全检查:
-	///         - 检查_dataManager是否为null
-	///         - 检查各子模块是否为null
-	///         - 为null时跳过对应的清理操作
-	///         
-	///         调用时机:
-	///         在_ExitTree()中自动调用
-	///         也可在需要时手动调用
-	///     </remarks>
 	/// </summary>
 	private void CleanupResources()
 	{
 		if (_dataManager != null)
 		{
+			// 移除自身监听器
+			_dataManager.Data.RemoveListener(this);
+			
 			// 移除监听器桥接器
 			_dataManager.Data.RemoveListener(_dataListenerBridge);
 			
@@ -847,7 +539,7 @@ public partial class PlayerMovementController : CharacterBody2D, IController
 			_dataManager.Data.RemoveListener((IPlayerDataListener)_inputHandler);
 			_dataManager.Data.RemoveListener(_physicsMovement);
 			
-			_log.Debug("已移除所有PlayerData监听器");
+			_log.Debug("已移除所有PlayerData监听器（包括自身）");
 		}
 	}
 
@@ -865,15 +557,6 @@ public partial class PlayerMovementController : CharacterBody2D, IController
 	///     IPlayerInputHandler接口实例
 	///     可能为null (如果初始化未完成)
 	///     </returns>
-	///     <remarks>
-	///         使用场景:
-	///         - 外部系统需要读取输入状态
-	///         - 单元测试时Mock输入
-	///         - 调试工具显示输入信息
-	///         
-	///         注意: 返回的是接口类型，非具体实现类
-	///         符合面向接口编程原则
-	///     </remarks>
 	/// </summary>
 	public IPlayerInputHandler InputHandler => _inputHandler!;
 
@@ -887,14 +570,6 @@ public partial class PlayerMovementController : CharacterBody2D, IController
 	///     IPlayerPhysicsMovement接口实例
 	///     可能为null (如果初始化未完成)
 	///     </returns>
-	///     <remarks>
-	///         使用场景:
-	///         - 外部系统需要控制或查询物理状态
-	///         - 单元测试时验证物理行为
-	///         - 调试工具显示速度、位置等信息
-	///         
-	///         注意: 返回的是接口类型，隐藏具体实现细节
-	///     </remarks>
 	/// </summary>
 	public IPlayerPhysicsMovement PhysicsMovement => _physicsMovement!;
 
@@ -908,20 +583,6 @@ public partial class PlayerMovementController : CharacterBody2D, IController
 	///     IPlayerStateController接口实例
 	///     可能为null (如果初始化未完成)
 	///     </returns>
-	///     <remarks>
-	///         使用场景:
-	///         - UI显示当前游戏状态
-	///         - 外部系统判断是否允许玩家操作
-	///         - 调试工具监控状态切换
-	///         
-	///         典型用法:
-	///         <code>
-	///         if (playerController.StateController.IsInputEnabled)
-	///         {
-	///             // 玩家可以操作
-	///         }
-	///         </code>
-	///     </remarks>
 	/// </summary>
 	public IPlayerStateController StateController => _stateController!;
 
@@ -935,29 +596,98 @@ public partial class PlayerMovementController : CharacterBody2D, IController
 	///     PlayerData实例
 	///     可能为null (如果数据管理器不可用)
 	///     </returns>
-	///     <remarks>
-	///         使用场景:
-	///         - UI界面显示当前配置值
-	///         - 调试面板查看和修改参数
-	///         - 外部系统同步配置数据
-	///         
-	///         重要提示:
-	///         - 修改此对象的属性会触发验证和通知
-	///         - 会自动设置脏标记，下次Save()时会持久化
-	///         - 所有注册的监听器都会收到变更通知
-	///         
-	///         示例:
-	///         <code>
-	///         var data = playerController.CurrentPlayerData;
-	///         if (data != null)
-	///         {
-	///             GD.Print($"当前速度: {data.Speed}");
-	///             data.Speed = 350.0f; // 触发验证+通知+脏标记
-	///         }
 	///         </code>
 	///     </remarks>
 	/// </summary>
 	public PlayerData? CurrentPlayerData => _dataManager?.Data;
+
+	#endregion
+
+	#region IPlayerDataListener接口实现（Export属性双向同步）
+
+	/// <summary>
+	///     当玩家移动速度发生变化时，同步到物理模块和Export属性
+	///     <para>
+	///         实现PlayerData → PhysicsModule → Export属性的完整数据流
+	///         确保Godot调试界面修改能够实时反映到游戏运行效果
+	///     </para>
+	///     <param name="oldValue">旧的速度值(像素/秒)</param>
+	/// <param name="newValue">新的速度值(像素/秒)</param>
+	/// </summary>
+	public void OnSpeedChanged(float oldValue, float newValue)
+	{
+		if (_physicsMovement != null)
+		{
+			_physicsMovement.Speed = newValue;
+		}
+		
+		this.Speed = newValue;
+		
+		GD.Print($"[PlayerMovementController] ✅ 速度已同步: {oldValue:F1} → {newValue:F1} (PhysicsModule + Export)");
+	}
+
+	/// <summary>
+	///     当跳跃速度发生变化时，同步到物理模块和Export属性
+	///     <param name="oldValue">旧的跳跃速度值(像素/秒)</param>
+	/// <param name="newValue">新的跳跃速度值(像素/秒)</param>
+	/// <remarks>
+	///         同OnSpeedChanged()的数据流逻辑
+	///         跳跃速度为负数表示向上（符合Godot坐标系）
+	///     </remarks>
+	/// </summary>
+	public void OnJumpVelocityChanged(float oldValue, float newValue)
+	{
+		if (_physicsMovement != null)
+		{
+			_physicsMovement.JumpVelocity = newValue;
+		}
+		
+		this.JumpVelocity = newValue;
+		
+		GD.Print($"[PlayerMovementController] ✅ 跳跃速度已同步: {oldValue:F1} → {newValue:F1} (PhysicsModule + Export)");
+	}
+
+	/// <summary>
+	///     当重力加速度发生变化时，同步到物理模块和Export属性
+	///     <param name="oldValue">旧的重力值(像素/秒²)</param>
+	/// <param name="newValue">新的重力值(像素/秒²)</param>
+	/// <remarks>
+	///         同OnSpeedChanged()的数据流逻辑
+	///         重力影响角色下落速度和跳跃高度
+	///     </remarks>
+	/// </summary>
+	public void OnGravityChanged(float oldValue, float newValue)
+	{
+		if (_physicsMovement != null)
+		{
+			_physicsMovement.Gravity = newValue;
+		}
+		
+		this.Gravity = newValue;
+		
+		GD.Print($"[PlayerMovementController] ✅ 重力已同步: {oldValue:F1} → {newValue:F1} (PhysicsModule + Export)");
+	}
+
+	/// <summary>
+	///     当奔跑倍率发生变化时的处理
+	///     <param name="oldValue">旧的奔跑倍率</param>
+	/// <param name="newValue">新的奔跑倍率</param>
+	/// <remarks>
+	///         当前行为:
+	///         奔跑倍率主要由InputHandler缓存和使用
+	///         PlayerMovementController不直接使用此属性
+	///         此方法保留用于未来扩展或日志记录
+	///         
+	///         未来可能的扩展:
+	///         - 同步到UI显示组件
+	///         - 记录性能指标变化
+	///         - 触发相关成就系统
+	///     </remarks>
+	/// </summary>
+	public void OnSprintMultiplierChanged(float oldValue, float newValue)
+	{
+		GD.Print($"[PlayerMovementController] ℹ️ 奔跑倍率变化: {oldValue:F2} → {newValue:F2} (当前未使用)");
+	}
 
 	#endregion
 }

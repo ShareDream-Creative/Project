@@ -2,9 +2,13 @@
 
 [ext_resource type="Script" uid="uid://fxx0uycph8gj" path="res://scripts/level/BaseLevelController.cs" id="1_6huxq"]
 [ext_resource type="PackedScene" uid="uid://dl36yxcgi18ce" path="res://scenes/platform/plate_Default.tscn" id="2_gbikr"]
+[ext_resource type="PackedScene" uid="uid://xvap61y33u7g" path="res://scenes/platform/prohibit.tscn" id="3_6fqnh"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_6huxq"]
 size = Vector2(56.5, 46)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_6fqnh"]
+size = Vector2(979, 139)
 
 [node name="LevelPlay" type="Node2D" unique_id=1122537427]
 script = ExtResource("1_6huxq")
@@ -32,3 +36,18 @@ position = Vector2(48, 279)
 [node name="PlateDefault2" parent="platform" unique_id=1405492635 instance=ExtResource("2_gbikr")]
 position = Vector2(911, 282)
 scale = Vector2(0.9654228, 1.136727)
+
+[node name="PlateDefault3" parent="platform" unique_id=2057809921 instance=ExtResource("2_gbikr")]
+position = Vector2(334, 279)
+
+[node name="PlateDefault4" parent="platform" unique_id=1899007791 instance=ExtResource("2_gbikr")]
+position = Vector2(638, 279)
+
+[node name="Prohibit" parent="." unique_id=1309119243 instance=ExtResource("3_6fqnh")]
+
+[node name="defeat" type="Area2D" parent="." unique_id=1367536876]
+unique_name_in_owner = true
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="defeat" unique_id=1540091236]
+position = Vector2(484.5, 640.5)
+shape = SubResource("RectangleShape2D_6fqnh")

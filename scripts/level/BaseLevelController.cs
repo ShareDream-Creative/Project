@@ -80,6 +80,15 @@ public partial class BaseLevelController : Node2D, IController, ISceneBehaviorPr
 	/// <summary>终点碰撞区域</summary>
 	protected Area2D EndArea => GetNode<Area2D>("%End");
 
+	/// <summary>
+	///     失败区域（掉落/危险区域）
+	///     <para>
+	///         当玩家进入此区域时，会被重置到起点位置
+	///         所有关卡场景必须包含此节点（unique_name_in_owner = true）
+	///     </para>
+	/// </summary>
+	protected Area2D DefeatArea => GetNode<Area2D>("%defeat");
+
 	#endregion
 
 	#region 公开属性
@@ -164,8 +173,11 @@ public partial class BaseLevelController : Node2D, IController, ISceneBehaviorPr
 			_log.Info("[BaseLevelController] 步骤6/7: 加载构建界面...");
 			await _uiManager.ShowBuildUiAsync();
 
-			_log.Info("[BaseLevelController] 步骤7/7: 初始化规则系统...");
+			_log.Info("[BaseLevelController] 步骤7/8: 初始化规则系统...");
 			InitializeRulesIntegration();
+
+			_log.Info("[BaseLevelController] 步骤8/8: 初始化失败区域检测...");
+			InitializeDefeatAreaDetection();
 
 			_log.Info("════════════ ✅ 场景初始化完成 ═══════════");
 			_log.Info($"[BaseLevelController] 当前阶段: {_currentPhase}");
@@ -377,6 +389,236 @@ public partial class BaseLevelController : Node2D, IController, ISceneBehaviorPr
 		IsBuildPhaseActive = false;
 		IsSuccessPhaseActive = false;
 		_log.Debug("[BaseLevelController] 所有阶段标志已重置");
+	}
+
+	/// <summary>
+	///     初始化失败区域检测
+	///     <para>
+	///         连接 defeat 区域的 body_entered 信号
+	///         当玩家进入该区域时触发重生逻辑
+	///     </para>
+	///     <remarks>
+	///         调用时机:
+	///         在 OnEnterAsync() 中最后调用，确保玩家已经生成
+	///         
+	///         错误处理:
+	///         - defeat 节点不存在: 记录警告，功能禁用
+	///         - 玩家未生成: 记录错误，延迟到下次检测
+	///         
+	///         性能说明:
+	///         此方法只调用一次，信号连接是 O(1) 操作
+	///     </remarks>
+	/// </summary>
+	private void InitializeDefeatAreaDetection()
+	{
+		try
+		{
+			var defeatArea = DefeatArea;
+
+			if (defeatArea == null)
+			{
+				_log.Warn("[BaseLevelController] ⚠️ 未找到 %defeat 节点！失败区域检测功能已禁用。");
+				_log.Warn("[BaseLevelController] 请确保关卡场景包含 unique_name_in_owner=true 的 defeat Area2D 节点。");
+				return;
+			}
+
+			defeatArea.BodyEntered += OnDefeatAreaBodyEntered;
+
+			_log.Info($"[BaseLevelController] ✅ 失败区域检测已初始化 (节点: {defeatArea.Name}, 位置: {defeatArea.Position})");
+			_log.Debug($"[BaseLevelController] Defeat区域碰撞层: {defeatArea.CollisionLayer}, 掩码: {defeatArea.CollisionMask}");
+		}
+		catch (Exception ex)
+		{
+			_log.Error($"[BaseLevelController] ❌ 初始化失败区域检测异常: {ex.Message}");
+			_log.Error($"[BaseLevelController] 异常类型: {ex.GetType().FullName}");
+		}
+	}
+
+	/// <summary>
+	///     当物体进入失败区域时的回调
+	///     <param name="body">进入区域的物理实体</param>
+	///     <remarks>
+	///         触发条件:
+	///         - 物体与 defeat Area2D 发生碰撞
+	///         - Godot 自动调用此回调
+	///         
+	///         判断逻辑:
+	///         1. 检查 body 是否为玩家实例（通过 PlayerInstance 比较）
+	///         2. 检查游戏是否已完成（避免重复触发）
+	///         3. 检查是否处于游玩阶段（构建阶段不触发）
+	///         4. 满足条件后执行重生逻辑
+	///         
+	///         边界情况:
+	///         - 其他物体（如掉落的平台）进入：忽略
+	///         - 游戏已完成：忽略
+	///         - 构建阶段：忽略
+	///         - 玩家为null：记录错误并返回
+	///     </remarks>
+	/// </summary>
+	private void OnDefeatAreaBodyEntered(Node body)
+	{
+		try
+		{
+			if (_isGameCompleted)
+			{
+				_log.Debug("[BaseLevelController] 游戏已完成，忽略失败区域触发");
+				return;
+			}
+
+			if (_currentPhase != LevelPhase.Play)
+			{
+				_log.Debug($"[BaseLevelController] 当前阶段为 {_currentPhase}，非游玩阶段，忽略失败区域触发");
+				return;
+			}
+
+			var playerInstance = _playerManager?.PlayerInstance;
+			if (playerInstance == null)
+			{
+				_log.Warn("[BaseLevelController] ⚠️ 玩家实例为空，无法执行重生逻辑");
+				return;
+			}
+
+			if (!IsPlayerOrChildOfPlayer(body, playerInstance))
+			{
+				_log.Debug($"[BaseLevelController] 非玩家物体 ({body.Name}) 进入失败区域，忽略");
+				return;
+			}
+
+			_log.Info("════════════ 玩家进入失败区域 ═══════════");
+			_log.Info($"[BaseLevelController] 💀 玩家 {body.Name} 进入 %defeat 区域！");
+			
+			var bodyNode2D = body as Node2D;
+			if (bodyNode2D != null)
+			{
+				_log.Info($"[BaseLevelController] 当前位置: {bodyNode2D.GlobalPosition}");
+			}
+
+			RespawnPlayerToStart();
+		}
+		catch (Exception ex)
+		{
+			_log.Error($"[BaseLevelController] ❌ 处理失败区域进入事件异常: {ex.Message}");
+			_log.Error($"[BaseLevelController] 堆栈跟踪:\n{ex.StackTrace}");
+		}
+	}
+
+	/// <summary>
+	///     判断节点是否为玩家或玩家的子节点
+	///     <param name="node">待检查的节点</param>
+	/// <param name="playerNode">玩家节点</param>
+	/// <returns>如果是玩家或其子节点返回true，否则false</returns>
+	/// <remarks>
+	///         设计原因:
+	///         玩家可能由多个子节点组成（CharacterBody2D、CollisionShape2D等）
+	///         当任意部分进入 defeat 区域都应该触发重生
+	///         
+	///         实现方式:
+	///         通过向上遍历父节点树检查是否到达玩家根节点
+	///     </remarks>
+	/// </summary>
+	private bool IsPlayerOrChildOfPlayer(Node node, Node playerNode)
+	{
+		if (node == null || playerNode == null) return false;
+
+		var current = node;
+		while (current != null)
+		{
+			if (current == playerNode) return true;
+			current = current.GetParent();
+		}
+
+		return false;
+	}
+
+	/// <summary>
+	///     将玩家重置到起点位置
+	///     <para>
+	///         当玩家进入失败区域、掉落出界等情况下调用
+	///         将玩家位置重置到 %Begin 节点的位置
+	///     </para>
+	///     <remarks>
+	///         重置流程:
+	///         1. 检查玩家实例和起点是否存在
+	///         2. 停止玩家当前的运动状态（清零速度）
+	///         3. 将玩家移动到起点位置
+	///         4. 记录详细日志用于调试
+	///         
+	///         错误处理:
+	///         - 玩家为null: 记录错误并返回
+	///         - 起点为null: 使用默认位置 (0,0)
+	///         - CharacterBody2D获取失败: 使用Node2D位置设置
+	///         
+	///         扩展性:
+	///         可在子类中重写此方法实现自定义重生逻辑
+	///         （例如：播放死亡动画、扣减生命值等）
+	///     </remarks>
+	/// </summary>
+	protected virtual void RespawnPlayerToStart()
+	{
+		try
+		{
+			var playerInstance = _playerManager?.PlayerInstance;
+			if (playerInstance == null)
+			{
+				_log.Error("[BaseLevelController] ❌ 无法重生玩家：玩家实例为空");
+				return;
+			}
+
+			var beginPosition = BeginPosition;
+			if (beginPosition == null)
+			{
+				_log.Error("[BaseLevelController] ❌ 无法重生玩家：起点 %Begin 节点为空");
+				return;
+			}
+
+			Vector2 targetPosition = beginPosition.GlobalPosition;
+
+			_log.Info($"[BaseLevelController] 🔄 正在将玩家重置到起点...");
+			_log.Info($"[BaseLevelController] 目标位置: {targetPosition}");
+
+			var characterBody = playerInstance.GetNodeOrNull<CharacterBody2D>("CharacterBody2D");
+			if (characterBody != null)
+			{
+				characterBody.Velocity = Vector2.Zero;
+				characterBody.GlobalPosition = targetPosition;
+
+				_log.Info("[BaseLevelController] ✅ 已重置玩家速度和位置 (CharacterBody2D)");
+				_log.Debug($"[BaseLevelController] 新位置: {characterBody.GlobalPosition}, 速度: {characterBody.Velocity}");
+			}
+			else
+			{
+				playerInstance.GlobalPosition = targetPosition;
+
+				_log.Info("[BaseLevelController] ✅ 已重置玩家位置 (Node2D)");
+				_log.Debug($"[BaseLevelController] 新位置: {playerInstance.GlobalPosition}");
+			}
+
+			OnPlayerRespawned(playerInstance, targetPosition);
+		}
+		catch (Exception ex)
+		{
+			_log.Error($"[BaseLevelController] ❌ 重生玩家异常: {ex.Message}");
+			_log.Error($"[BaseLevelController] 异常类型: {ex.GetType().FullName}");
+			_log.Error($"[BaseLevelController] 堆栈跟踪:\n{ex.StackTrace}");
+		}
+	}
+
+	/// <summary>
+	///     玩家重生完成后的回调（可被子类重写）
+	///     <param name="player">玩家实例</param>
+	/// <param name="respawnPosition">重生位置</param>
+	/// <remarks>
+	///         用途:
+	///         - 子类可重写此方法添加额外逻辑
+	///         - 例如：播放音效、显示特效、更新UI等
+	///         
+	///         默认行为:
+	///         仅输出日志记录
+	///     </remarks>
+	/// </summary>
+	protected virtual void OnPlayerRespawned(Node2D player, Vector2 respawnPosition)
+	{
+		_log.Info($"[BaseLevelController] 🎮 玩家重生完成！位置: {respawnPosition}");
 	}
 
 	#endregion

@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://dkghspvsfp8g1"]
 
 [ext_resource type="Script" uid="uid://fxx0uycph8gj" path="res://scripts/level/BaseLevelController.cs" id="1_2caii"]
+[ext_resource type="PackedScene" uid="uid://xvap61y33u7g" path="res://scenes/platform/prohibit.tscn" id="2_xnq8f"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_lorwu"]
 size = Vector2(91, 80)
@@ -9,6 +10,9 @@ size = Vector2(91, 80)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_xnq8f"]
 size = Vector2(930, 94)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_7xuoj"]
+size = Vector2(979, 139)
 
 [node name="Level5" type="Node2D" unique_id=1942541567]
 script = ExtResource("1_2caii")
@@ -60,3 +64,12 @@ offset_top = -7.0
 offset_right = 852.0
 offset_bottom = 86.0
 metadata/_edit_use_anchors_ = true
+
+[node name="Prohibit" parent="." unique_id=1309119243 instance=ExtResource("2_xnq8f")]
+
+[node name="defeat" type="Area2D" parent="." unique_id=116590607]
+unique_name_in_owner = true
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="defeat" unique_id=1301178006]
+position = Vector2(484.5, 640.5)
+shape = SubResource("RectangleShape2D_7xuoj")

@@ -226,18 +226,6 @@ public class PlayerData
 	///     <para>
 	///         角色起跳时的初始垂直速度，通常为负值(向上为负Y方向)
 	///     </para>
-	///     <remarks>
-	///         取值范围: [-MAX_JUMP_VELOCITY_ABS, -MIN_JUMP_VELOCITY_ABS] = [-1000, -200]
-	///         默认值: -500.0
-	///         物理公式: jumpHeight = velocity² / (2 * gravity)
-	///         当前配置跳跃高度 ≈ 127.5 像素
-	///         
-	///         注意: 此值为负数表示向上跳跃(符合Godot坐标系)
-	///         
-	///         验证机制:
-	///         设置时会自动调用ValidateJumpVelocity()方法
-	///         会保持符号不变，仅调整绝对值到有效范围
-	///     </remarks>
 	/// </summary>
 	public float JumpVelocity
 	{
@@ -261,19 +249,6 @@ public class PlayerData
 	///     <para>
 	///         影响角色在空中的下落速度和跳跃高度
 	///     </para>
-	///     <remarks>
-	///         取值范围: [MIN_GRAVITY, MAX_GRAVITY] = [100, 3000]
-	///         默认值: 980.0 (接近真实地球重力9.8m/s²的缩放)
-	///         注意: 实际运行时会从Godot项目设置读取默认值
-	///         
-	///         物理影响:
-	///         - 较大的重力 → 更快的下落、更低的跳跃高度
-	///         - 较小的重力 → 更慢的下落、更高的跳跃高度
-	///         
-	///         验证机制:
-	///         设置时会自动调用ValidateGravity()方法
-	///         超出范围的值会被截断到边界值
-	///     </remarks>
 	/// </summary>
 	public float Gravity
 	{
@@ -297,20 +272,6 @@ public class PlayerData
 	///     <para>
 	///         当角色处于奔跑状态时，移动速度将乘以此倍率
 	///     </para>
-	///     <remarks>
-	///         取值范围: [MIN_SPRINT_MULTIPLIER, MAX_SPRINT_MULTIPLIER] = [1.0, 3.0]
-	///         默认值: 1.5
-	///         示例: Speed=300, SprintMultiplier=1.5 → 实际速度=450
-	///         
-	///         设计考虑:
-	///         - 最小值1.0表示不加速（正常行走）
-	///         - 最大值3.0防止过快的移动速度
-	///         - 典型游戏值在1.3-1.8之间
-	///         
-	///         验证机制:
-	///         设置时会自动调用ValidateSprintMultiplier()方法
-	///         小于1.0的值会提升到1.0（不允许减速）
-	///     </remarks>
 	/// </summary>
 	public float SprintMultiplier
 	{
@@ -363,21 +324,6 @@ public class PlayerData
 	///     <value>
 	///     基于当前JumpVelocity和Gravity计算的跳跃高度
 	///     </value>
-	///     <remarks>
-	///         公式推导:
-	///         - 初速度v，重力加速度g
-	///         - 到达最高点时速度为0: 0 = v - g*t → t = v/g
-	///         - 高度h = v*t - 0.5*g*t² = v*(v/g) - 0.5*g*(v/g)²
-	///         - 化简得: h = v² / (2g)
-	///         
-	///         示例:
-	///         JumpVelocity=-500, Gravity=980 → CalculatedJumpHeight≈127.5
-	///         
-	///         用途:
-	///         - UI显示理论跳跃高度
-	///         - 调试时验证物理参数合理性
-	///         - 关卡设计参考
-	///     </remarks>
 	/// </summary>
 	public float CalculatedJumpHeight =>
 		(float)(JumpVelocity * JumpVelocity) / (2 * Math.Abs(Gravity));
@@ -394,29 +340,6 @@ public class PlayerData
 	///     </para>
 	///     <param name="listener">要添加的监听器实例</param>
 	///     <exception cref="ArgumentNullException">当listener为null时抛出</exception>
-	///     <remarks>
-	///         线程安全:
-	///         使用_listenerLock确保并发安全
-	///         
-	///         去重机制:
-	///         通过Contains()检查避免重复添加
-	///         重复添加同一实例不会产生副作用
-	///         
-	///         使用场景:
-	///         <code>
-	///         // 在初始化时注册监听器
-	///         playerData.AddListener(physicsMovement);
-	///         playerData.AddListener(inputHandler);
-	 ///         
-	///         // 后续修改属性会自动通知这些模块
-	///         playerData.Speed = 350.0f; // physicsMovement和inputHandler都会收到通知
-	///         </code>
-	///         
-	///         生命周期管理:
-	///         - 必须在监听器不再使用前调用RemoveListener()
-	///         - 否则会导致内存泄漏（PlayerData持有监听器引用）
-	///         - 建议在Dispose或Destroy中移除监听器
-	///     </remarks>
 	/// </summary>
 	public void AddListener(IPlayerDataListener listener)
 	{
@@ -561,50 +484,50 @@ public class PlayerData
 	///         跳跃速度必须为负值(向上)，且绝对值在有效范围内
 	///     </para>
 	///     <param name="value">输入的跳跃速度值</param>
-	///     <returns>约束后的有效跳跃速度值</returns>
+	/// <returns>处理后的跳跃速度值</returns>
 	/// <remarks>
-	///     验证规则:
-	///     1. 取输入值的绝对值
-	///     2. 将绝对值约束到 [MIN_JUMP_VELOCITY_ABS, MAX_JUMP_VELOCITY_ABS]
-	///     3. 恢复原始符号（负值表示向上）
+	///     处理规则:
+	///     1. 仅确保值为负数（表示向上跳跃）
+	///     2. 不限制最大值和最小值，允许任意速度
 	///     
 	///     特殊处理:
 	///     - 正值输入：转换为负值（强制向上）
-	///     - 负值输入：保持负号，调整绝对值
+	///     - 负值输入：保持原值不变
 	///     
 	///     示例:
-	///     ValidateSpeed(-1500) → -1000 (超出上限)
-	///     ValidateSpeed(-100) → -200 (低于下限)
-	///     ValidateSpeed(500) → -500 (正值转负)
-	///     ValidateSpeed(-400) → -400 (在范围内)
+	///     ValidateJumpVelocity(-1500) → -1500 (允许超大跳跃)
+	///     ValidateJumpVelocity(-100) → -100 (允许小跳)
+	///     ValidateJumpVelocity(500) → -500 (正值转负)
+	///     ValidateJumpVelocity(0) → 0 (零值保持)
 	/// </remarks>
 	public static float ValidateJumpVelocity(float value)
 	{
-		var absValue = Math.Abs(value);
-		var clampedAbs = Math.Clamp(absValue, MIN_JUMP_VELOCITY_ABS, MAX_JUMP_VELOCITY_ABS);
-		
-		return value >= 0 ? -clampedAbs : clampedAbs;
+		return value >= 0 ? -Math.Abs(value) : value;
 	}
 
 	/// <summary>
-	///     验证并约束重力加速度值到有效范围
+	///     验证重力加速度值（无范围限制）
 	/// </summary>
-	/// <param name="value">输入的重力值</param>
-	/// <returns>约束后的有效重力值</returns>
+	///     <param name="value">输入的重力值</param>
+	/// <returns>原始输入值（不进行任何约束）</returns>
 	/// <remarks>
 	///     验证规则:
-	///     - value < MIN_GRAVITY → 返回 MIN_GRAVITY (100)
-	///     - value > MAX_GRAVITY → 返回 MAX_GRAVITY (3000)
-	///     - 其他情况 → 返回原值
-	///     
+	///     - 不限制最大值和最小值
+	///     - 允许任意重力值（包括0、负数、超大值）
+	///     - 直接返回输入值，保持用户设置
+     
 	///     物理意义:
 	///     重力值影响下落速度和跳跃高度
-	///     过小的重力会导致飘浮感
-	///     过大的重力会导致快速坠落
+	///     用户可自由调整以实现不同物理效果：
+	///     - 低重力: 太空/月球环境模拟
+	///     - 标准重力: 地球环境 (≈980)
+	///     - 高重力: 重型星球环境
+	///     - 零重力: 完全失重状态
+	///     - 负重力: 反重力效果
 	/// </remarks>
 	public static float ValidateGravity(float value)
 	{
-		return Math.Clamp(value, MIN_GRAVITY, MAX_GRAVITY);
+		return value;
 	}
 
 	/// <summary>

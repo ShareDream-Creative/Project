@@ -9,9 +9,8 @@
 
 [node name="CharacterBody2D" type="CharacterBody2D" parent="." unique_id=786851039]
 script = ExtResource("1_dovo2")
-Speed = -1.0
-JumpVelocity = 10.0
-Gravity = 10.0
+Speed = 10.0
+JumpVelocity = -50.0
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="CharacterBody2D" unique_id=357574500]
 shape = SubResource("RectangleShape2D_dovo2")

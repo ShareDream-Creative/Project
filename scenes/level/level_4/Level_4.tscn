@@ -1,6 +1,7 @@
 [gd_scene format=3 uid="uid://bvkmk4p3xbo26"]
 
 [ext_resource type="Script" uid="uid://fxx0uycph8gj" path="res://scripts/level/BaseLevelController.cs" id="1_3djnq"]
+[ext_resource type="PackedScene" uid="uid://xvap61y33u7g" path="res://scenes/platform/prohibit.tscn" id="2_gtsne"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_gtsne"]
 size = Vector2(91, 80)
@@ -60,3 +61,5 @@ offset_top = -7.0
 offset_right = 852.0
 offset_bottom = 86.0
 metadata/_edit_use_anchors_ = true
+
+[node name="Prohibit" parent="." unique_id=1309119243 instance=ExtResource("2_gtsne")]
