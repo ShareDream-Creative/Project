@@ -21,7 +21,7 @@
 [ext_resource type="PackedScene" uid="uid://db7uqtqvqp4dn" path="res://scenes/intro/intro.tscn" id="13_hjx06"]
 [ext_resource type="Script" uid="uid://ls8nkxn3gipd" path="res://scripts/core/resource/TextureConfig.cs" id="14_hjx06"]
 [ext_resource type="PackedScene" uid="uid://d2x4bt0rm7hdy" path="res://scenes/level/level_ui/level_build_ui.tscn" id="14_msp3p"]
-[ext_resource type="PackedScene" uid="uid://dhf4oxywyjb8q" path="res://scenes/level/level_ui/level_defate_ui.tscn" id="14_v7wag"]
+[ext_resource type="PackedScene" uid="uid://dhf4oxywyjb8q" path="res://scenes/level/level_ui/level_defeat_ui.tscn" id="14_v7wag"]
 [ext_resource type="PackedScene" uid="uid://c3iol7hgt1qse" path="res://scenes/level/level_perpare.tscn" id="15_qdo7l"]
 [ext_resource type="PackedScene" uid="uid://d0qmei4jkw44s" path="res://scenes/level/Level_1/level_play.tscn" id="16_1y7ah"]
 [ext_resource type="PackedScene" uid="uid://drs0igcx1576g" path="res://scenes/level/level_Choose.tscn" id="17_1y7ah"]

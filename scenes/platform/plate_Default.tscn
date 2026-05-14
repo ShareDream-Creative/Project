@@ -1,0 +1,24 @@
+[gd_scene format=3 uid="uid://dl36yxcgi18ce"]
+
+[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_wgjoa"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_4fid3"]
+size = Vector2(95, 24)
+
+[node name="PlateDefault" type="Node2D" unique_id=1250926864]
+
+[node name="StaticBody2D2" type="StaticBody2D" parent="." unique_id=1651311047]
+physics_material_override = SubResource("PhysicsMaterial_wgjoa")
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="StaticBody2D2" unique_id=357289327]
+position = Vector2(-0.5, -2)
+shape = SubResource("RectangleShape2D_4fid3")
+
+[node name="ColorRect" type="ColorRect" parent="StaticBody2D2" unique_id=2012048794]
+offset_left = -48.0
+offset_top = -14.0
+offset_right = 47.0
+offset_bottom = 10.0
+metadata/_edit_use_anchors_ = true
+
+[node name="Sprite2D" type="Sprite2D" parent="StaticBody2D2" unique_id=1205246444]

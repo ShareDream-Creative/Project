@@ -85,7 +85,7 @@ namespace GFrameworkGodotTemplate.scripts.level.ui;
 /// </summary>
 [ContextAware]
 [Log]
-public partial class LevelDefateUi : Control, IController, IUiPageBehaviorProvider, ISimpleUiPage
+public partial class LevelDefeatUi : Control, IController, IUiPageBehaviorProvider, ISimpleUiPage
 {
 	#region 信号定义
 

@@ -3,22 +3,26 @@
 [ext_resource type="Script" uid="uid://bl2b4o5hf1114" path="res://scripts/player/PlayerMovementController.cs" id="1_dovo2"]
 [ext_resource type="Material" uid="uid://dsuylvexqgefv" path="res://resource/shader/bass_red.tres" id="2_gmlin"]
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_lvxji"]
-size = Vector2(87, 63)
-
-[sub_resource type="CanvasTexture" id="CanvasTexture_p47bc"]
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_dovo2"]
 
 [node name="Player" type="Node2D" unique_id=1470390202]
 
 [node name="CharacterBody2D" type="CharacterBody2D" parent="." unique_id=786851039]
 script = ExtResource("1_dovo2")
+Speed = -1.0
+JumpVelocity = 10.0
+Gravity = 10.0
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="CharacterBody2D" unique_id=357574500]
-position = Vector2(1.5, 0)
-shape = SubResource("RectangleShape2D_lvxji")
+shape = SubResource("RectangleShape2D_dovo2")
 
 [node name="Sprite2D" type="Sprite2D" parent="CharacterBody2D" unique_id=570647319]
 material = ExtResource("2_gmlin")
-position = Vector2(1.4999933, 0.49999857)
-scale = Vector2(87, 63.000004)
-texture = SubResource("CanvasTexture_p47bc")
+scale = Vector2(1, 0.36000013)
+
+[node name="ColorRect" type="ColorRect" parent="CharacterBody2D" unique_id=1802324396]
+offset_left = -10.0
+offset_top = -10.0
+offset_right = 10.0
+offset_bottom = 10.0
+color = Color(0.8641424, 0.09641866, 0.2103123, 1)
