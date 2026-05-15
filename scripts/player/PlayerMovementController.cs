@@ -403,10 +403,14 @@ public partial class PlayerMovementController : CharacterBody2D, IController, IP
 	/// <summary>
 	///     初始化所有子模块
 	///     <para>
-	///         创建InputHandler、PhysicsMovement、StateController三个子模块
-	///         注入必要的依赖项
-	///         注册数据监听器实现自动同步
-	///     </para>
+	 ///         创建InputHandler、PhysicsMovement、StateController三个子模块
+	 ///         注入必要的依赖项
+	 ///         注册数据监听器实现自动同步
+	 ///         
+	 ///         v2.2增强:
+	 ///         - 将全局输入服务注入到 PlayerStateController
+	 ///         - 实现基于 LevelPhase 的双重输入控制机制
+	 ///     </para>
 	/// </summary>
 	private void InitializeModules()
 	{
@@ -430,6 +434,11 @@ public partial class PlayerMovementController : CharacterBody2D, IController, IP
 		{
 			_stateController.SetStateMachineSystem(stateMachineSystem);
 		}
+		
+		// v2.2新增: 注入全局输入服务到状态控制器
+		// 实现 Success/Defeat/Build 阶段的输入阻断机制
+		_stateController.SetGlobalInputService(_globalInputService);
+		_log.Debug("已注入全局输入服务到PlayerStateController (支持LevelPhase阻断)");
 		
 		// 注册子模块为PlayerData监听器(实现自动同步)
 		if (_dataManager != null)

@@ -26,5 +26,7 @@ namespace GFrameworkGodotTemplate.scripts.enums;
 		Play,
 
 		/// <summary>成功阶段：显示SuccessUI，禁用全部输入</summary>
-		Success
+		Success,
+		/// <summary>失败阶段：显示DefeatUI，禁用全部输入</summary>
+		Defeat
 	}

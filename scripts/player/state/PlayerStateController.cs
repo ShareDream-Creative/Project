@@ -1,4 +1,5 @@
 using GFramework.Core.Abstractions.State;
+using GFrameworkGodotTemplate.global;
 using GFrameworkGodotTemplate.scripts.core.state.impls;
 using GFrameworkGodotTemplate.scripts.level;
 using GFrameworkGodotTemplate.scripts.player.interfaces;
@@ -9,71 +10,48 @@ namespace GFrameworkGodotTemplate.scripts.player.state;
 /// <summary>
 ///     玩家状态控制器实现
 ///     <para>
-///         基于GFramework状态机系统的输入控制权管理
-///         仅在PlayingState时允许玩家操作，其他状态完全禁用
+///         基于GFramework状态机系统和全局输入服务的双重输入控制权管理
+///         仅在PlayingState且全局输入启用时允许玩家操作
 ///     </para>
 ///     <author>AI Assistant</author>
-///     <version>2.1.0</version>
-///     <date>2026-05-11</date>
+///     <version>2.2.0 (Enhanced)</version>
+///     <date>2026-05-15</date>
 ///     <description>
 ///         核心职责:
 ///         1. 状态查询: 检测当前游戏状态是否为PlayingState
-///         2. 输入控制: 根据状态决定是否允许玩家输入
+///         2. 输入控制: 根据状态和全局输入服务决定是否允许玩家输入
 ///         3. 状态同步: 每帧更新状态缓存，确保响应及时
 ///         
-///         架构设计:
-///         - 依赖注入: 通过SetStateMachineSystem()接收状态机实例
-///         - 委托模式: 将实际的状态检测委托给IStateMachineSystem
-///         - 缓存策略: 每帧更新IsInputEnabled属性，避免频繁查询
-///     </description>
-///     <remarks>
-///         设计原则:
-///         - 单一职责(SRP): 只负责状态相关的输入控制逻辑
-///         - 接口隔离(ISP): 通过IPlayerStateController接口暴露最小化API
-///         - 依赖倒置(DIP): 依赖抽象的IStateMachineSystem接口
+///         架构设计(v2.2增强):
+///         - 双重检查机制: 同时检查状态机和全局输入服务
+///         - 优先级: 全局输入服务 > 状态机状态 > 阶段标志
+///         - 统一阻断: Success/Defeat阶段通过GlobalGameplayInputService统一阻断
 ///         
 ///         数据流向:
 ///         IStateMachineSystem.Current (状态机当前状态)
 ///             ↓
-///         UpdateState() (每帧调用，检测状态)
+///         GlobalGameplayInputService.IsInputEnabled (全局输入可用性)
+///             ↓
+///         UpdateState() (每帧调用，综合判断)
 ///             ↓
 ///         IsInputEnabled (布尔属性，供外部查询)
+///     </description>
+///     <remarks>
+///         状态映射表(v2.2增强):
+///         | 游戏状态 | LevelPhase | IsInputEnabled | 说明 |
+///         |---------|------------|---------------|------|
+///         | PlayingState | Play | true | 允许完整输入 |
+///         | PlayingState | Build/Success/Defeat | false | 阶段阻断 |
+///         | MainMenuState | 任意 | false | 主菜单禁用 |
+///         | PausedState | 任意 | false | 暂停时禁用 |
+///         | BootStartState | 任意 | false | 启动中禁用 |
+///         | GameOverState | 任意 | false | 结束时禁用 |
 ///         
-///         使用示例:
-///         <code>
-///         // 创建实例
-///         var stateController = new PlayerStateController();
-///         
-///         // 注入状态机系统
-///         var stateMachine = this.GetSystem&lt;IStateMachineSystem&gt;();
-///         stateController.SetStateMachineSystem(stateMachine);
-///         
-///         // 在物理更新循环中使用
-///         stateController.UpdateState();
-///         
-///         if (stateController.IsInputEnabled)
-///         {
-///             // 处理玩家输入
-///         }
-///         else
-///         {
-///             // 禁用输入，停止移动
-///         }
-///         </code>
-///         
-///         状态映射表:
-///         | 游戏状态 | IsInputEnabled | 说明 |
-///         |---------|---------------|------|
-///         | PlayingState | true | 允许完整输入 |
-///         | MainMenuState | false | 禁用所有输入 |
-///         | PausedState | false | 暂停时禁用 |
-///         | BootStartState | false | 启动中禁用 |
-///         | GameOverState | false | 结束时禁用 |
-///         
-///         性能说明:
-///         - UpdateState()应在_PhysicsProcess()中调用（非_Update）
-///         - IsInputEnabled是缓存的布尔值，读取无性能开销
-///         - 避免在一帧内多次调用UpdateState()
+///         设计原则:
+///         - 单一职责(SRP): 只负责状态相关的输入控制逻辑
+///         - 接口隔离(ISP): 通过IPlayerStateController接口暴露最小化API
+///         - 依赖倒置(DIP): 依赖抽象的IStateMachineSystem接口
+///         - 防御编程: 多层检查确保输入安全
 ///     </remarks>
 /// </summary>
 public class PlayerStateController : IPlayerStateController
@@ -85,24 +63,30 @@ public class PlayerStateController : IPlayerStateController
 	///     <para>
 	///         用于查询当前游戏状态
 	///         通过SetStateMachineSystem()方法注入
-	///     </para>
-	///     <remarks>
-	///         注入来源:
-	///         由PlayerMovementController从GFramework容器获取并传入
-	 ///         
-	///         使用方式:
-	///         - UpdateState()中访问Current属性获取当前状态
-	///         - 判断当前状态是否为PlayingState
-	///         
-	///         生命周期:
-	///         - 通过SetStateMachineSystem()注入
-	///         - 整个对象生命周期内保持引用
-	///         - 不负责此服务的创建和销毁
-	///         
-	///         初始值: null (未初始化状态)
-	///     </remarks>
+	 ///     </para>
 	/// </summary>
 	private IStateMachineSystem? _stateMachineSystem;
+
+	/// <summary>
+	///     全局游戏玩法输入服务引用 (v2.2新增)
+	///     <para>
+	///         用于查询全局输入是否被关卡阶段阻断
+	///         通过SetGlobalInputService()方法注入
+	 ///     </para>
+	 ///     <remarks>
+	 ///         注入来源:
+	 ///         由PlayerMovementController从GlobalInputController获取并传入
+	 ///         
+	 ///         使用方式:
+	 ///         - UpdateState()中访问IsInputEnabled属性
+	 ///         - 判断Success/Defeat等非Play阶段是否激活
+	 ///         
+	 ///         生命周期:
+	 ///         - 通过SetGlobalInputService()注入
+	 ///         - 整个对象生命周期内保持引用
+	 ///     </remarks>
+	/// </summary>
+	private IGlobalGameplayInputService? _globalInputService;
 
 	#endregion
 
@@ -152,56 +136,85 @@ public class PlayerStateController : IPlayerStateController
 	/// <remarks>
 	///     注入方式:
 	///     由外部调用者（通常是PlayerMovementController）传入状态机实例
-	///     
-	///     参数验证:
-	///     允许传入null（表示状态机不可用）
+	 ///     
+	 ///     参数验证:
+	 ///     允许传入null（表示状态机不可用）
 	 ///     当为null时，IsInputEnabled将始终返回false
-	///     
-	///     调用时机:
-	///     - PlayerMovementController.InitializeModules()中调用
-	///     - 应在UpdateState()之前调用
-	///     - 整个生命周期内只需调用一次
-	///     
-	///     使用示例:
-	///     <code>
-	///     var stateMachine = this.GetSystem&lt;IStateMachineSystem&gt;();
-	///     stateController.SetStateMachineSystem(stateMachine);
-	///     </code>
-	/// </remarks>
+	 ///     
+	 ///     调用时机:
+	 ///     - PlayerMovementController.InitializeModules()中调用
+	 ///     - 应在UpdateState()之前调用
+	 ///     - 整个生命周期内只需调用一次
+	 /// </remarks>
 	public void SetStateMachineSystem(IStateMachineSystem stateMachineSystem)
 	{
 		_stateMachineSystem = stateMachineSystem;
 	}
 
+	/// <summary>
+	///     注入全局游戏玩法输入服务 (v2.2新增)
+	 ///     <param name="globalInputService">全局输入服务实例</param>
+	 ///     <remarks>
+	 ///         注入方式:
+	 ///         由PlayerMovementController从GlobalInputController获取并传入
+	 ///         
+	 ///         参数验证:
+	 ///         允许传入null（表示全局输入服务不可用）
+	 ///         当为null时，将跳过全局输入状态检查（仅依赖状态机判断）
+	 ///         
+	 ///         调用时机:
+	 ///         - PlayerMovementController.InitializeModules()中调用
+	 ///         - 应在UpdateState()之前调用
+	 ///         - 整个生命周期内只需调用一次
+	 ///         
+	 ///         使用示例:
+	 ///         <code>
+	 ///         var globalService = FindGameplayInputService();
+	 ///         stateController.SetGlobalInputService(globalService);
+	 ///         </code>
+	 ///     </remarks>
+	/// </summary>
+	public void SetGlobalInputService(IGlobalGameplayInputService? globalInputService)
+	{
+		_globalInputService = globalInputService;
+	}
+
 	/// <inheritdoc />
 	/// <remarks>
-	///     实现逻辑:
-	///     1. 检查_stateMachineSystem是否为null
-	///        - 如果为null: 设置IsInputEnabled=false，直接返回
-	///        - 如果不为null: 继续下一步
-	///     2. 获取_current状态
-	///     3. 判断是否为PlayingState类型
-	///        - 是: 设置IsInputEnabled=true
-	///        - 否: 设置IsInputEnabled=false
-	///     4. 额外检查关卡构建阶段标志
-	///        - 如果BaseLevelController.IsBuildPhaseActive为true
-	///        - 强制设置IsInputEnabled=false（禁止移动）
-	///     5. 额外检查关卡成功阶段标志
-	///        - 如果BaseLevelController.IsSuccessPhaseActive为true
-	///        - 强制设置IsInputEnabled=false（禁止移动，但允许鼠标UI操作）
-	///     
-	///     调用时机:
-	///     应在每帧_PhysicsProcess()开始时调用一次
-	///     在读取IsInputEnabled属性之前调用
-	///     
-	///     注意事项:
-	///     - 必须在主线程调用
-	///     - 不应在一帧内多次调用
-	///     - 应配合输入处理一起调用
-	///     
-	///     性能影响:
-	///     此方法非常轻量，仅一次null检查和类型比较
-	///     不会造成性能问题
+	///     实现逻辑(v2.2增强 - 双重检查机制):
+	 ///     
+	 ///     检查优先级(从高到低):
+	 ///     1. **全局输入服务状态** (最高优先级)
+	 ///        - 如果 _globalInputService 不为 null 且 IsInputEnabled == false
+	 ///        - 立即禁用输入，不继续后续检查
+	 ///        - 这确保了 Success/Defeat/Build 阶段的输入阻断立即生效
+	 ///        
+	 ///     2. **关卡构建阶段标志** (中等优先级)
+	 ///        - 如果 BaseLevelController.IsBuildPhaseActive 为 true
+	 ///        - 强制禁用输入（Build阶段不允许移动）
+	 ///        
+	 ///     3. **关卡成功阶段标志** (中等优先级)
+	 ///        - 如果 BaseLevelController.IsSuccessPhaseActive 为 true
+	 ///        - 强制禁用输入（Success阶段不允许移动，但允许鼠标UI操作）
+	 ///        
+	 ///     4. **状态机当前状态** (最低优先级)
+	 ///        - 仅当以上所有检查都通过时
+	 ///        - 判断是否为 PlayingState 类型
+	 ///        - 是: 启用输入 | 否: 禁用输入
+	 ///     
+	 ///     设计优势:
+	 ///     - 多层防御: 即使某一层失效，其他层仍能保证安全
+	 ///     - 响应及时: 全局输入服务状态变更立即生效（无需等待下一帧）
+	 ///     - 向后兼容: 保留原有的Build/Success标志检查逻辑
+	 ///     - 统一管理: 所有非Play阶段的阻断逻辑集中在 GlobalGameplayInputService
+	 ///     
+	 ///     调用时机:
+	 ///     应在每帧_PhysicsProcess()开始时调用一次
+	 ///     在读取IsInputEnabled属性之前调用
+	 ///     
+	 ///     性能影响:
+	 ///     此方法非常轻量，仅几次null检查和布尔比较
+	 ///     不会造成性能问题
 	/// </remarks>
 	public void UpdateState()
 	{
@@ -212,7 +225,19 @@ public class PlayerStateController : IPlayerStateController
 		}
 
 		var isPlayingState = _stateMachineSystem.Current is PlayingState;
-		
+
+		if (_globalInputService != null && !_globalInputService.IsInputEnabled)
+		{
+			if (IsInputEnabled)
+			{
+				var phase = _globalInputService.CurrentPhase;
+				GD.Print($"[PlayerStateController] ⚠ 全局输入已禁用 | 当前阶段: {phase} | 禁止玩家移动");
+			}
+			
+			IsInputEnabled = false;
+			return;
+		}
+
 		if (BaseLevelController.IsBuildPhaseActive)
 		{
 			if (IsInputEnabled)

@@ -4,6 +4,7 @@ using GFramework.Game.Abstractions.Enums;
 using GFramework.Game.Abstractions.UI;
 using GFramework.Godot.Scene;
 using GFramework.Godot.UI;
+using GFrameworkGodotTemplate.global;
 using GFrameworkGodotTemplate.scripts.core.scene;
 using GFrameworkGodotTemplate.scripts.core.state.impls;
 using GFrameworkGodotTemplate.scripts.core.ui;
@@ -28,10 +29,14 @@ namespace GFrameworkGodotTemplate.scripts.level;
 ///         - 已将UI管理、玩家管理、输入控制、规则集成拆分为独立组件
 ///         - 本类仅负责组件协调和核心流程控制
 ///         - 通过接口实例化方式调用各功能模块
+///         
+///         架构增强(v2.1):
+///         - 集成全局输入服务(IGlobalGameplayInputService)实现统一输入阻塞
+///         - 关卡阶段变化自动同步到全局输入服务，确保全项目输入一致性
 ///     </para>
 ///     <author>AI Assistant</author>
-///     <version>2.0.0 (Refactored)</version>
-///     <date>2026-05-13</date>
+///     <version>2.1.0 (Enhanced)</version>
+///     <date>2026-05-15</date>
 /// </summary>
 [ContextAware]
 [Log]
@@ -47,6 +52,15 @@ public partial class BaseLevelController : Node2D, IController, ISceneBehaviorPr
 
 	/// <summary>UI路由器引用</summary>
 	private IUiRouter? _uiRouter;
+
+	/// <summary>
+	///     全局游戏玩法输入服务
+	///     <para>
+	///         用于同步关卡阶段状态到全局输入系统
+	///         实现基于LevelPhase的统一输入阻塞机制
+	///     </para>
+	/// </summary>
+	private IGlobalGameplayInputService? _globalInputService;
 
 	/// <summary>当前关卡阶段状态</summary>
 	private LevelPhase _currentPhase = LevelPhase.Build;
@@ -289,9 +303,84 @@ public partial class BaseLevelController : Node2D, IController, ISceneBehaviorPr
 		_stateMachineSystem = this.GetSystem<IStateMachineSystem>();
 		_uiRouter = this.GetSystem<IUiRouter>();
 
+		InitializeGlobalInputService();
+
 		_log.Debug("[BaseLevelController] 服务引用已初始化");
 
 		InitializeComponents();
+	}
+
+	/// <summary>
+	///     初始化全局游戏玩法输入服务
+	///     <para>
+	///         从 GlobalInputController 获取 IGlobalGameplayInputService 实例
+	///         用于同步关卡阶段状态，实现统一的输入阻塞机制
+	 ///     </para>
+	/// </summary>
+	private void InitializeGlobalInputService()
+	{
+		try
+		{
+			var tree = GetTree();
+			if (tree == null)
+			{
+				_log.Warn("[BaseLevelController] ⚠️ 无法获取 SceneTree，跳过全局输入服务初始化");
+				return;
+			}
+
+			var globalController = tree.Root.GetNode<GlobalInputController>("GlobalInputController");
+			
+			if (globalController != null && globalController.GameplayInputService != null)
+			{
+				_globalInputService = globalController.GameplayInputService;
+				
+				_globalInputService.SetCurrentPhase(_currentPhase);
+				
+				_log.Info("[BaseLevelController] ✅ 全局输入服务已初始化并同步当前阶段");
+			}
+			else
+			{
+				_log.Warn("[BaseLevelController] ⚠️ GlobalInputController 或 GameplayInputService 不可用");
+			}
+		}
+		catch (Exception ex)
+		{
+			_log.Warn($"[BaseLevelController] ⚠️ 初始化全局输入服务失败: {ex.Message}");
+		}
+	}
+
+	/// <summary>
+	///     设置当前关卡阶段（统一入口）
+	///     <param name="phase">新的关卡阶段</param>
+	///     <remarks>
+	///         此方法为关卡阶段变更的唯一入口，负责:
+	 ///         1. 更新本地 _currentPhase 状态
+	 ///         2. 同步到全局输入服务(IGlobalGameplayInputService)
+	 ///         3. 确保全项目输入阻塞行为一致
+	 ///         
+	 ///         使用方式:
+	 ///         所有组件（UI管理器、规则集成、失败/成功UI等）应通过此方法更新阶段
+	 ///         而非直接修改 _currentPhase 字段
+	 ///         
+	 ///         访问级别: public (允许外部组件如 LevelDefeatUi 调用)
+	///     </remarks>
+	/// </summary>
+	public void SetCurrentPhase(LevelPhase phase)
+	{
+		if (_currentPhase == phase)
+		{
+			return;
+		}
+
+		var oldPhase = _currentPhase;
+		_currentPhase = phase;
+
+		if (_globalInputService != null)
+		{
+			_globalInputService.SetCurrentPhase(phase);
+		}
+
+		_log.Info($"[BaseLevelController] 📊 阶段切换: {oldPhase} → {phase} | 输入状态: {(phase == LevelPhase.Play ? "✅ 启用" : "🚫 禁用")}");
 	}
 
 	/// <summary>初始化重构后的组件实例</summary>
@@ -303,7 +392,7 @@ public partial class BaseLevelController : Node2D, IController, ISceneBehaviorPr
 			_uiRouter,
 			this,
 			() => _currentPhase,
-			phase => _currentPhase = phase,
+			phase => SetCurrentPhase(phase),
 			() => IsBuildPhaseActive,
 			value => IsBuildPhaseActive = value,
 			msg => _log.Info(msg),
@@ -332,7 +421,7 @@ public partial class BaseLevelController : Node2D, IController, ISceneBehaviorPr
 
 		_rulesIntegration = new LevelRulesIntegrationImpl(
 			() => _currentPhase,
-			phase => _currentPhase = phase,
+			phase => SetCurrentPhase(phase),
 			() => IsSuccessPhaseActive,
 			value => IsSuccessPhaseActive = value,
 			msg => _log.Info(msg),

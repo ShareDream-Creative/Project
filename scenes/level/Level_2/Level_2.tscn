@@ -2,12 +2,21 @@
 
 [ext_resource type="Script" uid="uid://fxx0uycph8gj" path="res://scripts/level/BaseLevelController.cs" id="1_7dt0x"]
 [ext_resource type="PackedScene" uid="uid://xvap61y33u7g" path="res://scenes/platform/prohibit.tscn" id="2_eo6lq"]
+[ext_resource type="PackedScene" uid="uid://dl36yxcgi18ce" path="res://scenes/platform/plate_Default.tscn" id="3_5qjee"]
+[ext_resource type="PackedScene" uid="uid://1rmioom8ydcq" path="res://scenes/platform/wall.tscn" id="4_banp1"]
+[ext_resource type="PackedScene" uid="uid://cjrsch8kq6j1d" path="res://scenes/platform/platform_move.tscn" id="5_banp1"]
+[ext_resource type="Script" uid="uid://datlsxvio30cd" path="res://scripts/world/MovePlatformController.cs" id="5_dtxep"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_511nq"]
 size = Vector2(91, 80)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_eo6lq"]
 size = Vector2(979, 139)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_5qjee"]
+size = Vector2(193, 20)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_banp1"]
 
 [node name="Level2" type="Node2D" unique_id=1840572781]
 script = ExtResource("1_7dt0x")
@@ -17,15 +26,14 @@ position = Vector2(461, 190)
 
 [node name="End" type="Area2D" parent="." unique_id=4873833]
 unique_name_in_owner = true
-position = Vector2(878, 388)
+position = Vector2(912, 64)
 
 [node name="collion" type="CollisionShape2D" parent="End" unique_id=846089466]
-position = Vector2(-35.5, -30)
 shape = SubResource("RectangleShape2D_511nq")
 
 [node name="Begin" type="Node2D" parent="." unique_id=2049949544]
 unique_name_in_owner = true
-position = Vector2(143, 343)
+position = Vector2(81, 88)
 
 [node name="Prohibit" parent="." unique_id=1309119243 instance=ExtResource("2_eo6lq")]
 
@@ -35,3 +43,71 @@ unique_name_in_owner = true
 [node name="CollisionShape2D" type="CollisionShape2D" parent="defeat" unique_id=430914155]
 position = Vector2(484.5, 640.5)
 shape = SubResource("RectangleShape2D_eo6lq")
+
+[node name="CollisionShape2D2" type="CollisionShape2D" parent="defeat" unique_id=959238365]
+position = Vector2(737, 299)
+shape = SubResource("RectangleShape2D_5qjee")
+debug_color = Color(0.7302664, 0, 0.105640076, 0.41960785)
+
+[node name="CollisionShape2D3" type="CollisionShape2D" parent="defeat" unique_id=1883055203]
+position = Vector2(463, 260.99997)
+scale = Vector2(-0.07999635, 13.92)
+shape = SubResource("RectangleShape2D_5qjee")
+debug_color = Color(0.7302664, 0, 0.105640076, 0.41960785)
+
+[node name="ground" type="Node2D" parent="." unique_id=1083132380]
+
+[node name="PlateDefault" parent="ground" unique_id=1250926864 instance=ExtResource("3_5qjee")]
+position = Vector2(76, 172)
+scale = Vector2(1.5999997, 1)
+
+[node name="PlateDefault2" parent="ground" unique_id=2088400569 instance=ExtResource("3_5qjee")]
+position = Vector2(78, 381)
+scale = Vector2(1.5999997, 1)
+
+[node name="Wall" parent="ground" unique_id=1471831055 instance=ExtResource("4_banp1")]
+position = Vector2(482, 247.00002)
+scale = Vector2(1, 0.71999943)
+
+[node name="PlateDefault3" parent="ground" unique_id=183058202 instance=ExtResource("3_5qjee")]
+position = Vector2(882, 115)
+scale = Vector2(1.5999997, 1)
+
+[node name="moveplatform" type="Node2D" parent="ground" unique_id=780567457]
+position = Vector2(485, 487)
+script = ExtResource("5_dtxep")
+
+[node name="PlatformMove" parent="ground/moveplatform" unique_id=1232398423 instance=ExtResource("5_banp1")]
+position = Vector2(135, 0)
+scale = Vector2(6.84, 0.64)
+
+[node name="left" type="Node2D" parent="ground/moveplatform" unique_id=1852955102]
+unique_name_in_owner = true
+position = Vector2(-173, 0)
+
+[node name="right" type="Node2D" parent="ground/moveplatform" unique_id=1701969525]
+unique_name_in_owner = true
+position = Vector2(135, 0)
+
+[node name="button" type="Area2D" parent="ground/moveplatform" unique_id=1842403084]
+unique_name_in_owner = true
+position = Vector2(-443, -354)
+scale = Vector2(0.921926, -2.4221857)
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="ground/moveplatform/button" unique_id=548854515]
+shape = SubResource("RectangleShape2D_banp1")
+
+[node name="clue" type="ColorRect" parent="ground/moveplatform/button" unique_id=1795954418]
+unique_name_in_owner = true
+visible = false
+offset_left = -4.3387427
+offset_top = 12.798361
+offset_right = 6.5081162
+offset_bottom = 16.054693
+
+[node name="ColorRect" type="ColorRect" parent="ground/moveplatform/button" unique_id=1119233955]
+offset_left = -9.762171
+offset_top = -9.908409
+offset_right = 9.762171
+offset_bottom = 9.908405
+color = Color(6.7383053e-06, 0.5697789, 0.92449546, 1)

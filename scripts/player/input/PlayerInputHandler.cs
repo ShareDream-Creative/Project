@@ -14,23 +14,29 @@ namespace GFrameworkGodotTemplate.scripts.player.input;
 ///     <author>AI Assistant</author>
 ///     <version>2.1.0</version>
 ///     <date>2026-05-11</date>
-///     <description>
-///         核心职责:
-///         1. 输入适配: 将IGlobalGameplayInputService数据转换为本模块格式
-///         2. 状态管理: 维护奔跑状态等临时输入状态
-///         3. 数据缓存: 缓存从PlayerData同步的配置参数(SprintMultiplier)
-///         4. 速度计算: 提供考虑奔跑状态的实际速度计算方法
-///         
-///         架构重构说明:
-///         - 原始版本: 直接调用 Godot Input API (已迁移至 GlobalGameplayInputService)
-///         - 当前版本: 通过 IGlobalGameplayInputService 接口获取输入数据
-///         - 职责转变: 从"输入检测器"变为"输入数据适配器"
-///         
-///         架构增强(v2.0):
-///         - 实现IPlayerDataListener接口，支持数据自动同步
-///         - 新增奔跑状态检测(Shift键)
-///         - 集成SprintMultiplier，提供实际速度计算
-///     </description>
+/// <description>
+	///         核心职责:
+	///         1. 输入适配: 将IGlobalGameplayInputService数据转换为本模块格式
+	///         2. 状态管理: 维护奔跑状态等临时输入状态
+	///         3. 数据缓存: 缓存从PlayerData同步的配置参数(SprintMultiplier)
+	///         4. 速度计算: 提供考虑奔跑状态的实际速度计算方法
+	///         5. 交互检测: 支持交互键(E键)的输入检测和状态查询
+	///         
+	///         架构重构说明:
+	///         - 原始版本: 直接调用 Godot Input API (已迁移至 GlobalGameplayInputService)
+	///         - 当前版本: 通过 IGlobalGameplayInputService 接口获取输入数据
+	///         - 职责转变: 从"输入检测器"变为"输入数据适配器"
+	///         
+	///         架构增强(v2.0):
+	///         - 实现IPlayerDataListener接口，支持数据自动同步
+	///         - 新增奔跑状态检测(Shift键)
+	///         - 集成SprintMultiplier，提供实际速度计算
+	///         
+	///         架构增强(v2.1):
+	///         - 新增交互键支持(E键)
+	///         - 委托给GlobalGameplayInputService.DetectInteractInput()
+	///         - 支持场景对象交互（按钮、开关、NPC对话等）
+	///     </description>
 ///     <remarks>
 ///         设计优势:
 ///         1. 解耦: Player 模块不再直接依赖 Godot Input 系统
@@ -48,21 +54,28 @@ namespace GFrameworkGodotTemplate.scripts.player.input;
 ///         - 委托模式(Delegate): 将实际的输入检测委托给GlobalGameplayInputService
 ///         
 ///         使用示例:
-///         <code>
-///         // 创建实例 (注入全局输入服务)
-///         var inputHandler = new PlayerInputHandler(globalInputService);
-///         
-///         // 在物理更新循环中使用
-///         inputHandler.UpdateInput();
-///         
-///         // 读取输入状态
-///         float direction = inputHandler.HorizontalDirection;
-///         bool jump = inputHandler.IsJumpPressed;
-///         bool sprint = inputHandler.IsSprinting;
-///         
-///         // 计算实际速度
-///         float actualSpeed = inputHandler.CalculateActualSpeed(baseSpeed);
-///         </code>
+		///         <code>
+		///         // 创建实例 (注入全局输入服务)
+		///         var inputHandler = new PlayerInputHandler(globalInputService);
+		///         
+		///         // 在物理更新循环中使用
+		///         inputHandler.UpdateInput();
+		///         
+		///         // 读取输入状态
+		///         float direction = inputHandler.HorizontalDirection;
+		///         bool jump = inputHandler.IsJumpPressed;
+		///         bool sprint = inputHandler.IsSprinting;
+		///         bool interact = inputHandler.IsInteractPressed;
+		///         
+		///         // 计算实际速度
+		///         float actualSpeed = inputHandler.CalculateActualSpeed(baseSpeed);
+		///         
+		///         // 检测交互输入
+		///         if (interact)
+		///         {
+		///             // 执行交互逻辑（如触发按钮、开关等）
+		///         }
+		///         </code>
 ///         
 ///         线程安全性:
 ///         - UpdateInput()应在主线程调用(Godot Input API限制)
@@ -218,6 +231,26 @@ public class PlayerInputHandler : IPlayerInputHandler, IPlayerDataListener
 	///     </code>
 	/// </remarks>
 	public bool IsJumpPressed => _globalInputService.IsJumpPressed;
+
+	/// <inheritdoc />
+	/// <remarks>
+	///     从全局输入服务获取交互键(E键)状态
+	///     数据来源: GlobalGameplayInputService.DetectInteractInput()
+	///     
+	///     特性:
+	///     - 单次触发模式: 读取后自动重置为false
+	///     - 支持E键和ui_interact动作(如果配置)
+	///     
+	///     使用场景:
+	///     与场景中的可交互对象进行互动:
+	///     <code>
+	///     if (_inputHandler.IsInteractPressed)
+	///     {
+	///         // 触发交互（如按钮、开关、NPC对话等）
+	///     }
+	///     </code>
+	/// </remarks>
+	public bool IsInteractPressed => _globalInputService.IsInteractPressed;
 
 	/// <inheritdoc />
 	/// <remarks>

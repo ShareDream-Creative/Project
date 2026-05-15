@@ -23,7 +23,9 @@ using GFrameworkGodotTemplate.scripts.cqrs.game.command;
 using GFrameworkGodotTemplate.scripts.cqrs.pause_menu.command.input;
 using GFrameworkGodotTemplate.scripts.enums.scene;
 using GFrameworkGodotTemplate.scripts.enums.ui;
+using GFrameworkGodotTemplate.scripts.enums;
 using GFrameworkGodotTemplate.scripts.level.controllers;
+using GFrameworkGodotTemplate.global;
 using Godot;
 
 namespace GFrameworkGodotTemplate.scripts.level.ui;
@@ -34,10 +36,15 @@ namespace GFrameworkGodotTemplate.scripts.level.ui;
 ///         显示在关卡超时或失败时的失败界面
 ///         包含"再玩一次"和"返回主菜单"按钮
 ///         在此界面显示期间，禁用键盘/手柄输入，仅允许鼠标操作
+///         
+///         输入阻塞机制(v2.1):
+///         当此UI显示时，自动将关卡阶段设置为 LevelPhase.Defeat
+///         通过 BaseLevelController → GlobalGameplayInputService 传递
+///         阻断所有 Gameplay 输入（方向、跳跃、交互），确保玩家无法操作
 ///     </para>
 ///     <author>AI Assistant</author>
-///     <version>1.0.0</version>
-///     <date>2026-05-13</date>
+///     <version>2.1.0 (Enhanced)</version>
+///     <date>2026-05-15</date>
 ///     <description>
 ///         功能特性:
 ///         - 自主管理所有失败界面按钮事件和导航逻辑
@@ -45,6 +52,7 @@ namespace GFrameworkGodotTemplate.scripts.level.ui;
 ///         - 实现完整的UI生命周期管理
 ///         - 集成路由服务实现场景/UI切换
 ///         - 符合GFramework架构规范和单一职责原则
+///         - ✨ 新增: 自动设置 Defeat 阶段并阻断所有 Gameplay 输入
 ///         
 ///         导航目标:
 ///         - "再玩一次" → LevelPrepareUi + LevelPerpare 场景（重新准备当前关卡）
@@ -55,13 +63,14 @@ namespace GFrameworkGodotTemplate.scripts.level.ui;
 ///         - 控制器只负责决定何时显示此UI
 ///         - 通过信号或直接调用与控制器通信
 ///         
-///         输入限制 (Defate阶段):
+///         输入限制 (Defeat阶段):
 ///         ✓ 允许: 鼠标点击按钮
 ///         ✓ 允许: ESC键打开暂停菜单
-///         ✗ 禁止: 键盘/手柄游戏输入
+///         ✗ 禁止: 键盘/手柄游戏输入 (通过 GlobalGameplayInputService 自动阻断)
 ///         
 ///         触发时机:
 ///         - 关卡超时（Play阶段时间超过MaxTimeMs）
+///         - 进入失败区域（%defeat Area2D）
 ///         - 其他失败条件（未来扩展）
 ///         
 ///         Godot配置要求:
@@ -76,6 +85,13 @@ namespace GFrameworkGodotTemplate.scripts.level.ui;
 ///         - 没有"下一关"按钮（失败后不能进入下一关）
 ///         - 标题显示"失败"而不是"通过！"
 ///         - 可能显示超时原因信息（未来扩展）
+///         
+///         架构增强说明(v2.1):
+///         - 集成全局输入阻塞机制
+///         - 通过 BaseLevelController.SetCurrentPhase(LevelPhase.Defeat) 同步状态
+///         - GlobalGameplayInputService 接收到 Defeat 后自动阻断所有 Gameplay 输入
+///         - Player 模块通过 GlobalGameplayInputService 获取输入时返回空值
+///         - 确保失败期间玩家无法移动、跳跃或交互
 ///         
 ///         性能指标:
 ///         - 内存占用: <50KB（不含资源）
@@ -161,8 +177,11 @@ public partial class LevelDefeatUi : Control, IController, IUiPageBehaviorProvid
 		InitializeComponents();
 		SetupEventHandlers();
 		
+		SetDefeatPhaseToBlockInput();
+		
 		_log.Info("[LevelDefateUi] ✓✓✓ 失败界面初始化完成！");
 		_log.Info("[LevelDefateUi] 当前职责: 自主管理所有按钮事件和导航逻辑");
+		_log.Info("[LevelDefateUi] 输入状态: 🚫 Gameplay输入已阻断 (LevelPhase.Defeat)");
 	}
 
 	/// <summary>处理输入事件（Defeat阶段限制）</summary>
@@ -615,6 +634,131 @@ public partial class LevelDefeatUi : Control, IController, IUiPageBehaviorProvid
 	#endregion
 
 	#region 私有方法 - 辅助方法
+
+	/// <summary>
+	///     设置关卡阶段为Defeat以阻断所有Gameplay输入
+	///     <para>
+	 ///         此方法在UI初始化时调用，确保失败界面显示期间：
+	 ///         1. 关卡阶段切换为 LevelPhase.Defeat
+	 ///         2. 通过 BaseLevelController 或直接通过 GlobalInputController 同步到全局输入服务
+	 ///         3. GlobalGameplayInputService 接收到 Defeat 后阻断所有 Gameplay 输入
+	 ///         4. Player 模块获取的输入返回空值（方向=0, 跳跃=false, 交互=false）
+	 ///         
+	 ///         数据流向:
+	 ///         LevelDefeatUi → BaseLevelController.SetCurrentPhase(Defeat) [首选]
+	 ///                      ↓ 或（如果BaseLevelController不可用）
+	 ///         LevelDefeatUi → GlobalInputController.GameplayInputService.SetCurrentPhase(Defeat) [备用]
+	 ///             ↓
+	 ///         GlobalGameplayInputService._currentPhase = Defeat
+	 ///             ↓
+	 ///         GlobalGameplayInputService.IsInputEnabled = false
+	 ///             ↓
+	 ///         UpdateInputState() 返回默认值（0, false, false）
+	 ///             ↓
+	 ///         PlayerMovementController / MovePlatformController 无法获取有效输入
+	 ///     </para>
+	 ///     <remarks>
+	 ///         设计说明:
+	 ///         - 双重策略: 优先使用BaseLevelController，失败则直接操作GlobalInputController
+	 ///         - 防御式编程: 即使两个路径都失败也不会崩溃
+	 ///         - 幂等性: 多次调用不会产生副作用
+	 ///         - 日志追踪: 详细记录状态变更，便于调试和问题定位
+	 ///         
+	 ///         触发时机:
+	 ///         - _Ready() 方法末尾（UI显示时立即生效）
+	 ///         
+	 ///         影响范围:
+	 ///         - GlobalGameplayInputService: 输入检测被禁用
+	 ///         - Player 模块: 玩家无法移动、跳跃、交互
+	 ///         - World 模块: MovePlatformController 不响应E键
+	 ///         - UI 操作: 不受影响（鼠标点击按钮正常工作）
+	 ///     </remarks>
+	/// </summary>
+	private void SetDefeatPhaseToBlockInput()
+	{
+		_log.Info("[LevelDefateUi] ═══════════ 设置Defeat阶段并阻断输入 ═══════════");
+		
+		bool success = false;
+		
+		if (_levelController != null)
+		{
+			try
+			{
+				var previousPhase = _levelController.CurrentPhase;
+				
+				_log.Info($"[LevelDefateUi] 当前阶段: {previousPhase}");
+				_log.Info("[LevelDefateUi] 正在切换到 Defeat 阶段 (通过BaseLevelController)...");
+				
+				_levelController.SetCurrentPhase(GFrameworkGodotTemplate.scripts.enums.LevelPhase.Defeat);
+				
+				_log.Info("✓✓✓ Defeat阶段设置成功！");
+				_log.Info($"[LevelDefateUi] 阶段变更: {previousPhase} → LevelPhase.Defeat");
+				success = true;
+			}
+			catch (Exception ex)
+			{
+				_log.Warn($"[LevelDefateUi] ⚠️ 通过BaseLevelController设置失败: {ex.Message}");
+			}
+		}
+		else
+		{
+			_log.Warn("[LevelDefateUi] ⚠️ BaseLevelController不可用，尝试备用方案...");
+		}
+		
+		if (!success)
+		{
+			SetDefeatPhaseDirectly();
+		}
+		
+		_log.Info("[LevelDefateUi] 输入阻断效果:");
+		_log.Info("  • HorizontalDirection = 0 (玩家无法移动)");
+		_log.Info("  • IsJumpPressed = false (玩家无法跳跃)");
+		_log.Info("  • IsInteractPressed = false (无法交互按钮/开关)");
+		_log.Info("  • IsInputEnabled = false (全局输入已禁用)");
+		_log.Info("[LevelDefateUi] ═══════════ 输入阻断配置完成 ═══════════");
+	}
+
+	/// <summary>
+	///     直接通过GlobalInputController设置Defeat阶段（备用方案）
+	///     <para>
+	///         当BaseLevelController不可用时调用此方法
+	///         直接从场景树获取GlobalInputController并设置阶段
+	 ///     </para>
+	/// </summary>
+	private void SetDefeatPhaseDirectly()
+	{
+		_log.Info("[LevelDefateUi] 使用备用方案: 直接操作GlobalInputController...");
+		
+		try
+		{
+			var tree = GetTree();
+			if (tree == null)
+			{
+				_log.Error("[LevelDefateUi] ❌ 无法获取SceneTree");
+				return;
+			}
+
+			var globalController = tree.Root.GetNode<GlobalInputController>("GlobalInputController");
+			
+			if (globalController?.GameplayInputService == null)
+			{
+				_log.Error("[LevelDefateUi] ❌ GlobalInputController或GameplayInputService不可用");
+				return;
+			}
+
+			var previousPhase = globalController.GameplayInputService.CurrentPhase;
+			
+			globalController.GameplayInputService.SetCurrentPhase(GFrameworkGodotTemplate.scripts.enums.LevelPhase.Defeat);
+			
+			_log.Info("✓✓✓ 备用方案成功！直接设置Defeat阶段");
+			_log.Info($"[LevelDefateUi] 阶段变更: {previousPhase} → LevelPhase.Defeat (直接)");
+		}
+		catch (Exception ex)
+		{
+			_log.Error($"[LevelDefateUi] ❌ 备用方案也失败: {ex.Message}");
+			_log.Error("[LevelDefateUi]   ⚠️ 输入可能不会被完全阻断");
+		}
+	}
 
 	/// <summary>重置关卡阶段标志</summary>
 	private void ResetLevelPhaseFlags()

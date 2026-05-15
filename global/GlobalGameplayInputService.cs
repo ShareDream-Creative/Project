@@ -1,4 +1,5 @@
 using Godot;
+using GFrameworkGodotTemplate.scripts.enums;
 
 namespace GFrameworkGodotTemplate.global;
 
@@ -10,6 +11,7 @@ namespace GFrameworkGodotTemplate.global;
 ///     - 属于 Global 层: 作为全局单例服务运行
 ///     - 输入源抽象层: 屏蔽底层 Godot Input API 差异
 ///     - 状态缓存中心: 避免多个组件重复查询 Input 系统
+///     - 输入阻塞网关: 基于关卡阶段统一控制输入可用性
 ///     
 ///     输入映射策略(双策略模式):
 ///     策略1 - Input Map优先:
@@ -22,10 +24,18 @@ namespace GFrameworkGodotTemplate.global;
 ///       检测 A/D 键、方向键、空格键等常用按键
 ///       确保"开箱即用"无需额外配置
 ///     
+///     输入阻塞机制(v2.1):
+///     基于 LevelPhase 枚举实现自动输入控制:
+///     - Play阶段: 正常检测所有输入（方向、跳跃、交互）
+///     - Build阶段: 阻塞所有游戏玩法输入（返回默认值）
+///     - Success阶段: 阻塞所有游戏玩法输入
+///     - Failure阶段: 阻塞所有游戏玩法输入
+///     
 ///     与框架集成:
 ///     - 可由 GlobalInputController 调用 UpdateInputState()
 ///     - 或作为 AutoLoad 单例自动更新
 ///     - 所有 Gameplay 组件通过 IGlobalGameplayInputService 接口访问
+///     - 由 BaseLevelController 通过 SetCurrentPhase() 同步关卡状态
 /// </summary>
 public class GlobalGameplayInputService : IGlobalGameplayInputService
 {
@@ -34,6 +44,15 @@ public class GlobalGameplayInputService : IGlobalGameplayInputService
 	private float _horizontalDirection;
 
 	private bool _jumpPressed;
+
+	private bool _interactPressed;
+
+	#endregion
+
+	#region 关卡阶段状态
+
+	/// <summary>当前关卡阶段（默认为Build，表示输入被阻塞）</summary>
+	private LevelPhase _currentPhase = LevelPhase.Build;
 
 	#endregion
 
@@ -45,15 +64,56 @@ public class GlobalGameplayInputService : IGlobalGameplayInputService
 	/// <inheritdoc />
 	public bool IsJumpPressed => _jumpPressed;
 
+	/// <inheritdoc />
+	public bool IsInteractPressed => _interactPressed;
+
+	/// <inheritdoc />
+	public bool IsInputEnabled => _currentPhase == LevelPhase.Play;
+
+	/// <inheritdoc />
+	public LevelPhase CurrentPhase => _currentPhase;
+
 	#endregion
 
-	#region 核心方法
+	#region 公共方法
+
+	/// <inheritdoc />
+	public void SetCurrentPhase(LevelPhase phase)
+	{
+		if (_currentPhase == phase)
+		{
+			return;
+		}
+
+		var oldPhase = _currentPhase;
+		_currentPhase = phase;
+		
+		var isEnabled = IsInputEnabled;
+		
+		if (isEnabled)
+		{
+			GD.Print($"[GlobalGameplayInputService] ✅ 输入已启用 | 阶段: {oldPhase} → {phase}");
+		}
+		else
+		{
+			GD.Print($"[GlobalGameplayInputService] 🚫 输入已禁用 | 阶段: {oldPhase} → {phase}");
+		}
+	}
 
 	/// <inheritdoc />
 	public void UpdateInputState()
 	{
+		if (!IsInputEnabled)
+		{
+			_horizontalDirection = 0f;
+			_jumpPressed = false;
+			_interactPressed = false;
+			return;
+		}
+
 		_horizontalDirection = DetectHorizontalInput();
 		_jumpPressed = DetectJumpInput();
+		_interactPressed = DetectInteractInput();
 	}
 
 	#endregion
@@ -100,6 +160,29 @@ public class GlobalGameplayInputService : IGlobalGameplayInputService
 		}
 		
 		if (Input.IsKeyPressed(Key.Space))
+		{
+			return true;
+		}
+		
+		return false;
+	}
+
+	/// <summary>
+	///     检测交互输入(单次触发)
+	///     采用双策略: Input Map + 直接键盘检测
+	///     优先使用 ui_interact 动作（如果配置），后备使用 E 键
+	///     
+	///     注意: 使用 InputMap.HasAction() 先检查动作是否存在，避免 Godot 输出错误日志
+	/// </summary>
+	/// <returns>是否按下交互键</returns>
+	private bool DetectInteractInput()
+	{
+		if (InputMap.HasAction("ui_interact") && Input.IsActionJustPressed("ui_interact"))
+		{
+			return true;
+		}
+		
+		if (Input.IsKeyPressed(Key.E))
 		{
 			return true;
 		}

@@ -15,8 +15,13 @@ namespace GFrameworkGodotTemplate.global;
 ///     
 ///     扩展职责:
 ///     - 管理全局游戏玩法输入服务(IGlobalGameplayInputService)
-///     - 在每帧输入事件时同步更新全局输入状态
+///     - 在每帧物理更新时同步更新全局输入状态 (v2.1增强)
 ///     - 为所有 Gameplay 组件提供统一的输入数据源
+///     
+///     输入更新机制(v2.1):
+///     - _Process(): 每帧调用 UpdateGameplayInputState() 确保状态实时同步
+///     - Handle(): 输入事件时额外更新（保留兼容性）
+///     - 确保 Success/Defeat 阶段立即阻断所有 Gameplay 输入
 /// </summary>
 [ContextAware]
 [Log]
@@ -37,13 +42,37 @@ public partial class GlobalInputController : GameInputController
 
 	/// <summary>
 	///     初始化方法，在节点准备就绪时调用。
-	///     获取并初始化状态机系统和全局输入服务实例。
+	 ///     获取并初始化状态机系统和全局输入服务实例。
+	 ///     
+	 ///     v2.1增强: 启用每帧物理更新以确保输入状态实时同步
 	/// </summary>
 	public override void _Ready()
 	{
 		_stateMachineSystem = this.GetSystem<IStateMachineSystem>()!;
 		
 		InitializeGameplayInputService();
+		
+		_log.Debug("[GlobalInputController] 已启用每帧输入状态更新模式");
+	}
+
+	/// <summary>
+	///     每帧处理方法 (v2.1新增)
+	 ///     <para>
+	 ///         在每帧调用 UpdateGameplayInputState()
+	 ///         确保全局输入状态实时同步，不受输入事件频率影响
+	 ///         
+	 ///         解决的问题:
+	 ///         当 Success/Defeat 阶段激活时，即使没有新的按键事件
+	 ///         UpdateInputState() 仍会被调用，将所有输入重置为默认值(0, false, false)
+	 ///         
+	 ///         调用时机:
+	 ///         Godot 引擎每帧自动调用此方法
+	 ///         与 PlayerMovementController._PhysicsProcess() 同步
+	 ///     </para>
+	/// </summary>
+	public override void _Process(double delta)
+	{
+		UpdateGameplayInputState();
 	}
 
 	protected override bool AcceptPhase(InputPhase phase)
@@ -53,9 +82,6 @@ public partial class GlobalInputController : GameInputController
 
 	protected override void Handle(InputPhase phase, InputEvent @event)
 	{
-		// 每次输入事件都更新全局游戏玩法输入状态
-		UpdateGameplayInputState();
-
 		if (!@event.IsActionPressed("ui_cancel"))return;
 
 		if (_stateMachineSystem.Current is not PlayingState) return;

@@ -11,6 +11,7 @@ size = Vector2(27, 418)
 physics_material_override = SubResource("PhysicsMaterial_ouj8k")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="StaticBody2D2" unique_id=154461201]
+position = Vector2(0.5, 4)
 shape = SubResource("RectangleShape2D_8jpuc")
 
 [node name="Sprite2D" type="Sprite2D" parent="StaticBody2D2" unique_id=1290286972]
