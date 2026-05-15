@@ -16,6 +16,7 @@ using GFrameworkGodotTemplate.scripts.cqrs.game.command;
 using GFrameworkGodotTemplate.scripts.cqrs.pause_menu.command.input;
 using GFrameworkGodotTemplate.scripts.enums.ui;
 using GFrameworkGodotTemplate.scripts.enums;
+using GFrameworkGodotTemplate.scripts.player;
 using Godot;
 
 namespace GFrameworkGodotTemplate.scripts.level;
@@ -665,13 +666,15 @@ public partial class BaseLevelController : Node2D, IController, ISceneBehaviorPr
 			_log.Info($"[BaseLevelController] 🔄 正在将玩家重置到起点...");
 			_log.Info($"[BaseLevelController] 目标位置: {targetPosition}");
 
-			var characterBody = playerInstance.GetNodeOrNull<CharacterBody2D>("CharacterBody2D");
+			var characterBody = FindCharacterBodyInPlayer(playerInstance);
 			if (characterBody != null)
 			{
 				characterBody.Velocity = Vector2.Zero;
 				characterBody.GlobalPosition = targetPosition;
 
-				_log.Info("[BaseLevelController] ✅ 已重置玩家速度和位置 (CharacterBody2D)");
+				ResetPlayerPhysicsState(characterBody);
+
+				_log.Info("[BaseLevelController] ✅ 已重置玩家速度、位置和物理状态 (CharacterBody2D)");
 				_log.Debug($"[BaseLevelController] 新位置: {characterBody.GlobalPosition}, 速度: {characterBody.Velocity}");
 			}
 			else
@@ -693,6 +696,65 @@ public partial class BaseLevelController : Node2D, IController, ISceneBehaviorPr
 	}
 
 	/// <summary>
+	///     重置玩家物理运动状态
+	///     <para>
+	///         清空PlayerPhysicsMovement内部累积的速度向量和其他物理参数
+	///         防止玩家在下落过程中出现速度持续累积导致的异常加速问题
+	///     </para>
+	///     <param name="characterBody">玩家的CharacterBody2D节点</param>
+	///     <remarks>
+	///         重置内容:
+	///         1. 调用 PlayerPhysicsMovement.StopImmediately() 清空内部速度向量(_velocity)
+	///         2. 确保 CharacterBody2D.Velocity 已归零（双重保险）
+	///         
+	///         调用时机:
+	///         - 玩家进入失败区域需要重生时
+	///         - 陷阱触发后恢复玩家时
+	///         - 任何需要完全重置玩家物理状态的场景
+	///         
+	///         设计原理:
+	///         PlayerPhysicsMovement维护内部的_velocity字段用于物理计算
+	///         如果只重置 CharacterBody2D.Velocity 而不重置 _velocity，
+	///         下一帧物理更新时 _physicsMovement 会重新将累积的速度赋给 body
+	///         导致"速度重置无效"的假象
+	///     </remarks>
+	/// </summary>
+	private void ResetPlayerPhysicsState(CharacterBody2D characterBody)
+	{
+		try
+		{
+			var movementCtrl = characterBody.GetNodeOrNull<PlayerMovementController>("PlayerMovementController") ??
+							   characterBody.GetNodeOrNull<PlayerMovementController>("CharacterBody2D");
+
+			if (movementCtrl != null)
+			{
+				var physicsMovement = movementCtrl.PhysicsMovement;
+				if (physicsMovement != null)
+				{
+					physicsMovement.StopImmediately();
+					_log.Debug("[BaseLevelController] ✓ PlayerPhysicsMovement内部速度已清空");
+				}
+				else
+				{
+					_log.Warn("[BaseLevelController] ⚠️ 无法获取PlayerPhysicsMovement实例");
+				}
+			}
+			else
+			{
+				_log.Warn("[BaseLevelController] ⚠️ 无法获取PlayerMovementController实例，跳过物理模块重置");
+			}
+
+			characterBody.Velocity = Vector2.Zero;
+		}
+		catch (Exception ex)
+		{
+			_log.Error($"[BaseLevelController] ❌ 重置玩家物理状态异常: {ex.Message}");
+			_log.Debug($"[BaseLevelController] 将使用基础重置方案(仅清零Velocity)");
+			characterBody.Velocity = Vector2.Zero;
+		}
+	}
+
+	/// <summary>
 	///     玩家重生完成后的回调（可被子类重写）
 	///     <param name="player">玩家实例</param>
 	/// <param name="respawnPosition">重生位置</param>
@@ -708,6 +770,110 @@ public partial class BaseLevelController : Node2D, IController, ISceneBehaviorPr
 	protected virtual void OnPlayerRespawned(Node2D player, Vector2 respawnPosition)
 	{
 		_log.Info($"[BaseLevelController] 🎮 玩家重生完成！位置: {respawnPosition}");
+	}
+
+	#endregion
+
+	#region 公开API - 陷阱处理
+
+	/// <summary>
+	///     处理陷阱触发事件（由 TrapStatic 信号调用）
+	///     <param name="playerNode">被陷阱隐藏的玩家节点</param>
+	/// <remarks>
+	///         功能说明:
+	///         1. 恢复玩家可见性（Visible = true）
+	///         2. 重置玩家到起点位置 (%Begin)
+	///         3. 重置玩家速度和物理状态
+	///         4. 触发 OnPlayerRespawned 回调
+	///         
+	///         调用时机:
+	///         - TrapStatic 发送 TrapTriggered 信号后
+	///         - TeachLevel 等子类在需要时也可直接调用
+	///         
+	///         设计原理:
+	///         将陷阱触发的后续处理集中管理，确保:
+	///         - 玩家状态一致性（可见性+位置+速度）
+	///         - 日志记录完整性
+	///         - 子类可重写扩展
+	///     </remarks>
+	/// </summary>
+	public virtual void HandleTrapTriggered(Node playerNode)
+	{
+		try
+		{
+			if (_isGameCompleted)
+			{
+				_log.Debug("[BaseLevelController] 游戏已完成，忽略陷阱触发");
+				return;
+			}
+
+			_log.Info("══════════ 处理陷阱触发 ═════════");
+			
+			RestorePlayerVisibility(playerNode);
+			RespawnPlayerToStart();
+			
+			_log.Info("══════════ 陷阱处理完成 ═════════");
+		}
+		catch (Exception ex)
+		{
+			_log.Error($"[BaseLevelController] ❌ 处理陷阱触发异常: {ex.Message}");
+			_log.Error($"[BaseLevelController] 堆栈跟踪:\n{ex.StackTrace}");
+		}
+	}
+
+	/// <summary>
+	///     恢复玩家可见性
+	///     <param name="playerNode">要恢复的玩家节点</param>
+	/// </summary>
+	private void RestorePlayerVisibility(Node playerNode)
+	{
+		try
+		{
+			_log.Info("[BaseLevelController] 👁️ 正在恢复玩家可见性...");
+			
+			var canvasItem = playerNode as CanvasItem;
+			if (canvasItem != null)
+			{
+				canvasItem.Visible = true;
+			}
+			else
+			{
+				playerNode.ProcessMode = Node.ProcessModeEnum.Inherit;
+				_log.Debug("[BaseLevelController] 玩家是非CanvasItem节点，已恢复处理模式");
+			}
+			
+			var characterBody = FindCharacterBodyInPlayer(playerNode);
+			if (characterBody != null)
+			{
+				characterBody.Visible = true;
+				
+				var collisionShape = characterBody.GetNodeOrNull<CollisionShape2D>("CollisionShape2D");
+				if (collisionShape != null)
+				{
+					collisionShape.Disabled = false;
+					_log.Debug("[BaseLevelController] ✓ 碰撞形状已重新启用");
+				}
+				
+				_log.Info("[BaseLevelController] ✓ 玩家及 CharacterBody2D 已恢复可见");
+			}
+			else
+			{
+				_log.Info("[BaseLevelController] ✓ 玩家已恢复可见（未找到 CharacterBody2D）");
+			}
+		}
+		catch (Exception ex)
+		{
+			_log.Error($"[BaseLevelController] ❌ 恢复玩家可见性异常: {ex.Message}");
+		}
+	}
+
+	/// <summary>查找玩家节点中的 CharacterBody2D</summary>
+	private static CharacterBody2D? FindCharacterBodyInPlayer(Node playerNode)
+	{
+		if (playerNode is CharacterBody2D body) return body;
+		
+		return playerNode.GetNodeOrNull<CharacterBody2D>("CharacterBody2D") ?? 
+			   playerNode.GetNodeOrNull<CharacterBody2D>("character_body_2d");
 	}
 
 	#endregion

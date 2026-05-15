@@ -171,23 +171,20 @@ public partial class LevelSuccessUi : Control, IController, IUiPageBehaviorProvi
 		InitializeComponents();
 		SetupEventHandlers();
 		
-		PhaseBlockingHelper.SetPhaseAndBlockInput(this, LevelPhase.Success, "[LevelSuccessUi]");
-		
 		_log.Info("[LevelSuccessUi] ✓✓✓ 成功界面初始化完成！🎉");
 		_log.Info("[LevelSuccessUi] 当前职责: 自主管理所有按钮事件和导航逻辑");
 		_log.Info("[LevelSuccessUi] 输入状态: 🚫 Gameplay输入已阻断 (LevelPhase.Success)");
 	}
 
-	/// <summary>处理输入事件（Success阶段限制）</summary>
+	/// <summary>处理输入事件（Success阶段限制 - 禁用ESC暂停功能）</summary>
 	public override void _Input(InputEvent @event)
 	{
 		if (!Visible) return;
-		
+
 		if (@event.IsActionPressed("ui_cancel"))
 		{
-			_log.Info("[LevelSuccessUi] 检测到ESC键，打开暂停菜单...");
-			this.SendCommand(new PauseGameWithOpenPauseMenuCommand(new OpenPauseMenuCommandInput()));
-			AcceptEvent();
+			_log.Debug("[LevelSuccessUi] ESC键已禁用 - 关卡成功阶段不允许打开暂停菜单");
+			GetViewport()?.SetInputAsHandled();
 		}
 	}
 

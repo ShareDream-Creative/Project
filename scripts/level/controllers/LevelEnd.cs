@@ -1,4 +1,4 @@
-﻿using GFramework.Godot.Scene;
+using GFramework.Godot.Scene;
 using GFrameworkGodotTemplate.scripts.core.scene;
 using GFrameworkGodotTemplate.scripts.enums.scene;
 using Godot;
@@ -58,8 +58,18 @@ public partial class LevelEnd : Node2D, ISimpleScene
 	{
 		_log.Info("[LevelEnd] ══════════ 初始化关卡结束场景 ══════════");
 		_log.Info($"[LevelEnd] 场景标识: {SceneKeyStr}");
-		
+
 		_log.Info("[LevelEnd] ✓✓✓ LevelEnd 初始化完成");
+	}
+
+	/// <summary>拦截输入事件 - 结束阶段禁用ESC暂停功能</summary>
+	public override void _Input(InputEvent @event)
+	{
+		if (@event.IsActionPressed("ui_cancel"))
+		{
+			_log.Debug("[LevelEnd] ESC键已禁用 - 结束阶段不允许打开暂停菜单");
+			GetViewport()?.SetInputAsHandled();
+		}
 	}
 
 	#endregion
@@ -110,4 +120,3 @@ public partial class LevelEnd : Node2D, ISimpleScene
 
 	#endregion
 }
-

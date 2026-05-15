@@ -132,6 +132,9 @@ public partial class LevelDefeatUi : Control, IController, IUiPageBehaviorProvid
 	/// <summary>状态机系统服务</summary>
 	private IStateMachineSystem? _stateMachineSystem;
 
+	/// <summary>导航互斥锁：防止快速连续点击导致状态混乱</summary>
+	private bool _isNavigating = false;
+
 	#endregion
 
 	#region 节点引用（必须与level_defate_ui.tscn匹配）
@@ -177,25 +180,23 @@ public partial class LevelDefeatUi : Control, IController, IUiPageBehaviorProvid
 		InitializeComponents();
 		SetupEventHandlers();
 		
-		PhaseBlockingHelper.SetPhaseAndBlockInput(this, LevelPhase.Defeat, "[LevelDefateUi]");
-		
 		_log.Info("[LevelDefateUi] ✓✓✓ 失败界面初始化完成！");
 		_log.Info("[LevelDefateUi] 当前职责: 自主管理所有按钮事件和导航逻辑");
 		_log.Info("[LevelDefateUi] 输入状态: 🚫 Gameplay输入已阻断 (LevelPhase.Defeat)");
 	}
 
-	/// <summary>处理输入事件（Defeat阶段限制）</summary>
+	/// <summary>处理输入事件（Defeat阶段限制 - 禁用ESC暂停功能）</summary>
 	public override void _Input(InputEvent @event)
 	{
 		if (!Visible) return;
-		
+
 		if (@event.IsActionPressed("ui_cancel"))
 		{
-			_log.Info("[LevelDefateUi] 检测到ESC键，打开暂停菜单...");
-			this.SendCommand(new PauseGameWithOpenPauseMenuCommand(new OpenPauseMenuCommandInput()));
-			AcceptEvent();
+			_log.Debug("[LevelDefateUi] ESC键已禁用 - 关卡失败阶段不允许打开暂停菜单");
+			GetViewport()?.SetInputAsHandled();
 		}
 	}
+
 
 	#endregion
 
@@ -309,6 +310,12 @@ public partial class LevelDefeatUi : Control, IController, IUiPageBehaviorProvid
 	/// <summary>"再玩一次"按钮点击处理 - 核心功能</summary>
 	private void OnAgainButtonPressed()
 	{
+		if (_isNavigating)
+		{
+			_log.Debug("[LevelDefateUi] 导航进行中，忽略重复点击");
+			return;
+		}
+
 		_log.Info("[LevelDefateUi] ═══════════ 用户点击'再玩一次' ═══════════");
 		_log.Info($"[LevelDefateUi] 当前关卡: {LevelChoose.CurrentGameLevel}");
 		EmitSignal(SignalName.RetryRequested);
@@ -319,6 +326,12 @@ public partial class LevelDefeatUi : Control, IController, IUiPageBehaviorProvid
 	/// <summary>"返回主菜单"按钮点击处理 - 核心功能</summary>
 	private void OnBackButtonPressed()
 	{
+		if (_isNavigating)
+		{
+			_log.Debug("[LevelDefateUi] 导航进行中，忽略重复点击");
+			return;
+		}
+
 		_log.Info("[LevelDefateUi] ═══════════ 用户点击'返回主菜单' ═══════════");
 		EmitSignal(SignalName.MainMenuRequested);
 		
@@ -348,14 +361,18 @@ public partial class LevelDefeatUi : Control, IController, IUiPageBehaviorProvid
 	/// </summary>
 	private IEnumerator<IYieldInstruction> RetryLevelCoroutine()
 	{
-		_log.Info("[LevelDefateUi] ═══════════ 开始再玩一次流程 ═══════════");
-		_log.Info($"[LevelDefateUi] 目标关卡: {LevelChoose.CurrentGameLevel}");
+		_isNavigating = true;
 		
-		_log.Info("[LevelDefateUi] 步骤1/4: 清理当前关卡数据...");
-		ClearCurrentLevelData();
-		
-		_log.Info("[LevelDefateUi] 步骤2/4: 重置关卡状态标志...");
-		ResetLevelPhaseFlags();
+		try
+		{
+			_log.Info("[LevelDefateUi] ═══════════ 开始再玩一次流程 ═══════════");
+			_log.Info($"[LevelDefateUi] 目标关卡: {LevelChoose.CurrentGameLevel}");
+			
+			_log.Info("[LevelDefateUi] 步骤1/4: 清理当前关卡数据...");
+			ClearCurrentLevelData();
+			
+			_log.Info("[LevelDefateUi] 步骤2/4: 重置关卡状态标志...");
+			ResetLevelPhaseFlags();
 		
 		_log.Info("[LevelDefateUi] 步骤3/4: 切换到LevelPrepare UI...");
 		yield return LoadLevelPrepareUiAsync().AsCoroutineInstruction();
@@ -366,6 +383,11 @@ public partial class LevelDefeatUi : Control, IController, IUiPageBehaviorProvid
 		_log.Info("[LevelDefateUi] ✓✓✓ 再玩一次流程完成！");
 		_log.Info($"[LevelDefateUi] 当前位置: 关卡准备界面 (LevelPrepareUi + LevelPerpare)");
 		_log.Info($"[LevelDefateUi] 等待用户点击'开始构建'重新进入 {LevelChoose.CurrentGameLevel}...");
+		}
+		finally
+		{
+			_isNavigating = false;
+		}
 	}
 
 	/// <summary>
@@ -475,22 +497,31 @@ public partial class LevelDefeatUi : Control, IController, IUiPageBehaviorProvid
 	/// </summary>
 	private IEnumerator<IYieldInstruction> ReturnToMainMenuCoroutine()
 	{
-		_log.Info("[LevelDefateUi] ═══════════ 开始返回主菜单流程 ═══════════");
+		_isNavigating = true;
 		
-		_log.Info("[LevelDefateUi] 步骤1/4: 重置关卡状态标志...");
-		ResetLevelPhaseFlags();
-		
-		_log.Info("[LevelDefateUi] 步骤2/4: 切换状态机到MainMenuState...");
-		yield return SwitchToMainMenuStateAsync().AsCoroutineInstruction();
-		
-		_log.Info("[LevelDefateUi] 步骤3/4: 加载LevelChoose UI...");
-		yield return LoadLevelChooseUiAsync().AsCoroutineInstruction();
+		try
+		{
+			_log.Info("[LevelDefateUi] ═══════════ 开始返回主菜单流程 ═══════════");
+			
+			_log.Info("[LevelDefateUi] 步骤1/4: 重置关卡状态标志...");
+			ResetLevelPhaseFlags();
+			
+			_log.Info("[LevelDefateUi] 步骤2/4: 切换状态机到MainMenuState...");
+			yield return SwitchToMainMenuStateAsync().AsCoroutineInstruction();
+			
+			_log.Info("[LevelDefateUi] 步骤3/4: 加载LevelChoose UI...");
+			yield return LoadLevelChooseUiAsync().AsCoroutineInstruction();
 		
 		_log.Info("[LevelDefateUi] 步骤4/4: 切换到Choose场景...");
 		yield return SwitchToChooseSceneAsync().AsCoroutineInstruction();
 		
 		_log.Info("[LevelDefateUi] ✓✓✓ 返回主菜单流程完成！");
 		_log.Info("[LevelDefateUi] 当前位置: 关卡选择界面 (LevelChoose + Choose)");
+		}
+		finally
+		{
+			_isNavigating = false;
+		}
 	}
 
 	/// <summary>切换状态机到MainMenuState</summary>

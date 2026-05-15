@@ -82,9 +82,17 @@ public partial class GlobalInputController : GameInputController
 
 	protected override void Handle(InputPhase phase, InputEvent @event)
 	{
-		if (!@event.IsActionPressed("ui_cancel"))return;
+		if (!@event.IsActionPressed("ui_cancel")) return;
 
 		if (_stateMachineSystem.Current is not PlayingState) return;
+		
+		var currentPhase = _gameplayInputService.CurrentPhase;
+		if (currentPhase != LevelPhase.Play)
+		{
+			_log.Debug($"[GlobalInputController] ESC忽略 - 当前关卡阶段不允许暂停: {currentPhase}");
+			return;
+		}
+
 		_log.Debug("暂停游戏");
 		_pauseMenuUiHandle = this.SendCommand(new PauseGameWithOpenPauseMenuCommand(new OpenPauseMenuCommandInput
 			{ Handle = _pauseMenuUiHandle }));

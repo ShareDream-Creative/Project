@@ -95,5 +95,14 @@ public enum SceneKey
 	///     从LevelSuccessUi的"下一步"按钮进入
 	///     场景文件: res://scenes/level/level_end.tscn
 	/// </summary>
-	LevelEnd
+	LevelEnd,
+
+	/// <summary>
+	///     教程关卡场景
+	///     新游戏（NewGame）按钮直接进入的教学关卡
+	///     继承BaseLevelController但具有特殊胜利逻辑
+	///     胜利后GameLevel自动重置为None以便进入正式第一关
+	///     场景文件: res://scenes/level/Teach_Level.tscn
+	/// </summary>
+	TeachLevel,
 }

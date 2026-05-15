@@ -1,48 +1,41 @@
 [gd_scene format=3 uid="uid://cx7c51x0enuxd"]
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_sr71t"]
-size = Vector2(979, 139)
+[ext_resource type="Script" uid="uid://cl0hfncd1pfjm" path="res://scripts/level/controllers/TeachLevel.cs" id="1_44cmk"]
+[ext_resource type="PackedScene" uid="uid://dl36yxcgi18ce" path="res://scenes/platform/plate_Default.tscn" id="1_i4q6f"]
+[ext_resource type="PackedScene" uid="uid://c1lwahk41awbt" path="res://scenes/trap/Trap_static.tscn" id="2_44cmk"]
+[ext_resource type="PackedScene" uid="uid://xvap61y33u7g" path="res://scenes/platform/prohibit.tscn" id="2_kv03g"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_oqg8q"]
-size = Vector2(91, 80)
-
-[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_i4q6f"]
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_kv03g"]
-size = Vector2(930, 94)
+size = Vector2(27.5, 32)
 
 [node name="TeachLevel" type="Node2D" unique_id=1702853114]
-
-[node name="defeat" type="Area2D" parent="." unique_id=797911743]
-unique_name_in_owner = true
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="defeat" unique_id=1198561005]
-position = Vector2(484.5, 640.5)
-shape = SubResource("RectangleShape2D_sr71t")
+script = ExtResource("1_44cmk")
 
 [node name="End" type="Area2D" parent="." unique_id=525166951]
 unique_name_in_owner = true
-position = Vector2(878, 388)
 
 [node name="collion" type="CollisionShape2D" parent="End" unique_id=858744865]
-position = Vector2(-35.5, -30)
+position = Vector2(915, 383)
 shape = SubResource("RectangleShape2D_oqg8q")
 
 [node name="Begin" type="Node2D" parent="." unique_id=667046448]
 unique_name_in_owner = true
-position = Vector2(143, 343)
+position = Vector2(49, 373)
 
-[node name="StaticBody2D" type="StaticBody2D" parent="." unique_id=1658638913]
-position = Vector2(82, 436)
-physics_material_override = SubResource("PhysicsMaterial_i4q6f")
+[node name="ground" type="Node2D" parent="." unique_id=1896863987]
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="StaticBody2D" unique_id=86993277]
-position = Vector2(389, 39)
-shape = SubResource("RectangleShape2D_kv03g")
+[node name="PlateDefault" parent="ground" unique_id=1250926864 instance=ExtResource("1_i4q6f")]
+position = Vector2(47, 412)
 
-[node name="ColorRect" type="ColorRect" parent="StaticBody2D" unique_id=1459293986]
-offset_left = -75.0
-offset_top = -7.0
-offset_right = 852.0
-offset_bottom = 86.0
-metadata/_edit_use_anchors_ = true
+[node name="PlateDefault2" parent="ground" unique_id=272080214 instance=ExtResource("1_i4q6f")]
+position = Vector2(484, 412)
+scale = Vector2(1.8799988, 1)
+
+[node name="PlateDefault3" parent="ground" unique_id=951889322 instance=ExtResource("1_i4q6f")]
+position = Vector2(913, 412)
+
+[node name="TrapStatic" parent="ground" unique_id=256416211 instance=ExtResource("2_44cmk")]
+position = Vector2(481.00003, 644)
+scale = Vector2(-48.371754, 6.811742)
+
+[node name="Prohibit" parent="." unique_id=1309119243 instance=ExtResource("2_kv03g")]

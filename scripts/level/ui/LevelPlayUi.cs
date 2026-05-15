@@ -6,6 +6,7 @@ using GFramework.Godot.UI;
 using GFrameworkGodotTemplate.scripts.constants;
 using GFrameworkGodotTemplate.scripts.core.ui;
 using GFrameworkGodotTemplate.scripts.enums.ui;
+using GFrameworkGodotTemplate.scripts.utility;
 using Godot;
 
 namespace GFrameworkGodotTemplate.scripts.level.ui;

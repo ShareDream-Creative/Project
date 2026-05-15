@@ -11,6 +11,7 @@ using GFrameworkGodotTemplate.scripts.enums.scene;
 using GFrameworkGodotTemplate.scripts.enums.ui;
 using GFrameworkGodotTemplate.scripts.enums;
 using GFrameworkGodotTemplate.scripts.main_menu;
+using GFrameworkGodotTemplate.scripts.utility;
 using Godot;
 
 namespace GFrameworkGodotTemplate.scripts.level.controllers;
@@ -110,14 +111,7 @@ public partial class LevelChoose : Control, IController, IUiPageBehaviorProvider
 		SetupEventHandlers();
 	}
 
-	public override void _Input(InputEvent @event)
-	{
-		if (!@event.IsActionPressed("ui_cancel") || !Visible) return;
 
-		_log.Info("[LevelChoose] 检测到Esc按键，弹出暂停菜单");
-		this.SendCommand(new PauseGameWithOpenPauseMenuCommand(new OpenPauseMenuCommandInput()));
-		AcceptEvent();
-	}
 
 	private void SetupEventHandlers()
 	{

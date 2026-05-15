@@ -214,6 +214,9 @@ public class LevelUiManagerImpl : ILevelUiManager
             _logInfo("[LevelUiManager] → 加载失败界面 (level_defate_ui.tscn)...");
             await _uiRouter.PushAsync(nameof(UiKey.LevelDefateUi));
 
+            _setCurrentPhase(LevelPhase.Defeat);
+            _logInfo("[LevelUiManager] ★ 阶段已切换为 Defeat (ESC暂停已阻断)");
+
             _logInfo("[LevelUiManager] ✓✓✓ 失败界面已成功显示！");
             _logInfo("[LevelUiManager] 用户可选择:");
             _logInfo("[LevelUiManager]   • '再玩一次' - 重新开始当前关卡");
@@ -468,6 +471,9 @@ public class LevelUiManagerImpl : ILevelUiManager
 
         _logInfo("[LevelUiManager] 步骤2[显示SuccessUI]: 正在加载成功界面...");
         yield return _uiRouter?.PushAsync(nameof(UiKey.LevelSuccessUi)).AsTask().AsCoroutineInstruction();
+
+        _setCurrentPhase(LevelPhase.Success);
+        _logInfo("[LevelUiManager] ★ 阶段已切换为 Success (ESC暂停已阻断)");
 
         _logInfo("[LevelUiManager] ✓✓✓ SuccessUI已成功显示！");
         _logInfo("[LevelUiManager] ═══════════ 🎉 恭喜通关！🎉 ═══════════");

@@ -12,6 +12,7 @@ using GFrameworkGodotTemplate.scripts.enums.scene;
 using GFrameworkGodotTemplate.scripts.enums.ui;
 using GFrameworkGodotTemplate.scripts.enums;
 using GFrameworkGodotTemplate.scripts.level.controllers;
+using GFrameworkGodotTemplate.scripts.utility;
 using Godot;
 
 namespace GFrameworkGodotTemplate.scripts.level.ui;
@@ -88,6 +89,9 @@ public partial class LevelEndUi : Control, IController, IUiPageBehaviorProvider,
 	/// <summary>场景路由器服务</summary>
 	private ISceneRouter? _sceneRouter;
 
+	/// <summary>导航互斥锁：防止快速连续点击导致状态混乱</summary>
+	private bool _isNavigating = false;
+
 	#endregion
 
 	#region 节点引用（必须与level_end_ui.tscn匹配）
@@ -139,16 +143,15 @@ public partial class LevelEndUi : Control, IController, IUiPageBehaviorProvider,
 		_log.Info("[LevelEndUi] 当前职责: 自主管理所有按钮事件和导航逻辑");
 	}
 
-	/// <summary>处理输入事件（End阶段限制）</summary>
+	/// <summary>处理输入事件（End阶段限制 - 禁用ESC暂停功能）</summary>
 	public override void _Input(InputEvent @event)
 	{
 		if (!Visible) return;
 		
 		if (@event.IsActionPressed("ui_cancel"))
 		{
-			_log.Info("[LevelEndUi] 检测到ESC键，打开暂停菜单...");
-			this.SendCommand(new PauseGameWithOpenPauseMenuCommand(new OpenPauseMenuCommandInput()));
-			AcceptEvent();
+			_log.Debug("[LevelEndUi] ESC键已禁用 - 关卡结束阶段不允许打开暂停菜单");
+			GetViewport()?.SetInputAsHandled();
 		}
 	}
 
@@ -239,6 +242,12 @@ public partial class LevelEndUi : Control, IController, IUiPageBehaviorProvider,
 	/// <summary>"下一关"按钮点击处理 - 核心功能</summary>
 	private void OnNextLevelButtonPressed()
 	{
+		if (_isNavigating)
+		{
+			_log.Debug("[LevelEndUi] 导航进行中，忽略重复点击");
+			return;
+		}
+
 		_log.Info("[LevelEndUi] ═══════════ 用户点击'下一关' ═══════════");
 		
 		var currentLevel = LevelChoose.CurrentGameLevel;
@@ -252,6 +261,12 @@ public partial class LevelEndUi : Control, IController, IUiPageBehaviorProvider,
 	/// <summary>"返回主菜单"按钮点击处理 - 核心功能</summary>
 	private void OnExitButtonPressed()
 	{
+		if (_isNavigating)
+		{
+			_log.Debug("[LevelEndUi] 导航进行中，忽略重复点击");
+			return;
+		}
+
 		_log.Info("[LevelEndUi] ═══════════ 用户点击'返回主菜单' ═══════════");
 		EmitSignal(SignalName.MainMenuRequested);
 		
@@ -282,22 +297,43 @@ public partial class LevelEndUi : Control, IController, IUiPageBehaviorProvider,
  /// </summary>
 	private IEnumerator<IYieldInstruction> GoToNextLevelCoroutine()
 	{
-		_log.Info("[LevelEndUi] ═══════════ 开始进入下一关 ═══════════");
+		_isNavigating = true;
+		DisableAllButtons();
 		
-		var currentLevel = LevelChoose.CurrentGameLevel;
-		_log.Info($"[LevelEndUi] 步骤1/6: 检测当前关卡 → {currentLevel}");
-		
-		_log.Info("[LevelEndUi] 步骤2/6: 计算下一关...");
-		var nextLevel = LevelChoose.GetNextLevel();
+		try
+		{
+			_log.Info("[LevelEndUi] ═══════════ 开始进入下一关 ═══════════");
+			
+			var currentLevel = LevelChoose.CurrentGameLevel;
+			_log.Info($"[LevelEndUi] 步骤1/6: 检测当前关卡 → {currentLevel}");
+			
+			_log.Info("[LevelEndUi] 步骤2/6: 计算下一关...");
+			var nextLevel = LevelChoose.GetNextLevel();
+			var currentLevelForCheck = LevelChoose.CurrentGameLevel;
 		
 		if (nextLevel == null)
 		{
-			_log.Warn("[LevelEndUi] ⚠ 当前已是最后一关或测试关卡，无法继续！");
-			_log.Warn($"[LevelEndUi]   当前关卡: {currentLevel}");
-			_log.Warn("[LevelEndUi]   建议: 请返回主菜单选择其他关卡");
 			
-			HandleNoNextLevelAvailable();
-			yield break;
+			if (currentLevelForCheck == GameLevel.None)
+			{
+				_log.Info("🎯 [LevelEndUi] ★ 检测到 GameLevel = None (教程关卡完成)");
+				_log.Info("[LevelEndUi] → 自动将关卡设置为第一关 (Level1)");
+				
+				LevelChoose.SetCurrentGameLevel(GameLevel.Level1);
+				nextLevel = GameLevel.Level1;
+				
+				_log.Info($"[LevelEndUi] ✓ 关卡已更新为: {nextLevel.Value}");
+				_log.Info("[LevelEndUi] → 继续正常的'进入下一关'流程");
+			}
+			else
+			{
+				_log.Warn("[LevelEndUi] ⚠ 当前已是最后一关或测试关卡，无法继续！");
+				_log.Warn($"[LevelEndUi]   当前关卡: {currentLevelForCheck}");
+				_log.Warn("[LevelEndUi]   建议: 请返回主菜单选择其他关卡");
+				
+				HandleNoNextLevelAvailable();
+				yield break;
+			}
 		}
 		
 		_log.Info($"[LevelEndUi] ✓ 找到下一关: {nextLevel.Value}");
@@ -318,6 +354,12 @@ public partial class LevelEndUi : Control, IController, IUiPageBehaviorProvider,
 		_log.Info("[LevelEndUi] ✓✓✓ 进入下一关完成！");
 		_log.Info($"[LevelEndUi] 当前位置: 关卡准备界面 (LevelPrepareUi + LevelPerpare)");
 		_log.Info($"[LevelEndUi] 等待用户点击'开始构建'进入 {LevelChoose.CurrentGameLevel}...");
+		}
+		finally
+		{
+			_isNavigating = false;
+			EnableAllButtons();
+		}
 	}
 
 	/// <summary>处理无下一关可用的情况</summary>
@@ -447,22 +489,33 @@ public partial class LevelEndUi : Control, IController, IUiPageBehaviorProvider,
  /// </summary>
 	private IEnumerator<IYieldInstruction> ReturnToMainMenuCoroutine()
 	{
-		_log.Info("[LevelEndUi] ═══════════ 开始返回主菜单流程 ═══════════");
+		_isNavigating = true;
+		DisableAllButtons();
 		
-		_log.Info("[LevelEndUi] 步骤1/3: 重置关卡状态标志...");
-		BaseLevelController.ResetPhaseFlags();
-		
-		_log.Info("[LevelEndUi] 步骤2/3: 切换状态机到MainMenuState...");
-		yield return SwitchToMainMenuStateAsync().AsCoroutineInstruction();
-		
-		_log.Info("[LevelEndUi] 步骤3/3: 加载LevelChoose UI...");
-		yield return LoadLevelChooseUiAsync().AsCoroutineInstruction();
-		
-		_log.Info("[LevelEndUi] 步骤4/4: 切换到Choose场景...");
-		yield return SwitchToChooseSceneAsync().AsCoroutineInstruction();
-		
-		_log.Info("[LevelEndUi] ✓✓✓ 返回主菜单流程完成！");
-		_log.Info("[LevelEndUi] 当前位置: 关卡选择界面 (LevelChoose + Choose)");
+		try
+		{
+			_log.Info("[LevelEndUi] ═══════════ 开始返回主菜单流程 ═══════════");
+			
+			_log.Info("[LevelEndUi] 步骤1/3: 重置关卡状态标志...");
+			BaseLevelController.ResetPhaseFlags();
+			
+			_log.Info("[LevelEndUi] 步骤2/3: 切换状态机到MainMenuState...");
+			yield return SwitchToMainMenuStateAsync().AsCoroutineInstruction();
+			
+			_log.Info("[LevelEndUi] 步骤3/3: 加载LevelChoose UI...");
+			yield return LoadLevelChooseUiAsync().AsCoroutineInstruction();
+			
+			_log.Info("[LevelEndUi] 步骤4/4: 切换到Choose场景...");
+			yield return SwitchToChooseSceneAsync().AsCoroutineInstruction();
+			
+			_log.Info("[LevelEndUi] ✓✓✓ 返回主菜单流程完成！");
+			_log.Info("[LevelEndUi] 当前位置: 关卡选择界面 (LevelChoose + Choose)");
+		}
+		finally
+		{
+			_isNavigating = false;
+			EnableAllButtons();
+		}
 	}
 
 	/// <summary>切换状态机到MainMenuState</summary>
@@ -530,6 +583,36 @@ public partial class LevelEndUi : Control, IController, IUiPageBehaviorProvider,
 			_log.Error($"[LevelEndUi] ❌ 切换Choose场景失败: {ex.Message}");
 			throw;
 		}
+	}
+
+	/// <summary>禁用所有按钮（导航期间防止重复点击）</summary>
+	private void DisableAllButtons()
+	{
+		if (!GodotObject.IsInstanceValid(this))  // ★ 防止在对象释放后调用
+		{
+			_log.Debug("[LevelEndUi] ⚠ 节点已释放，跳过 DisableAllButtons()");
+			return;
+		}
+		
+		if (PurchaseButton != null && GodotObject.IsInstanceValid(PurchaseButton)) PurchaseButton.Disabled = true;
+		if (NextLevelButton != null && GodotObject.IsInstanceValid(NextLevelButton)) NextLevelButton.Disabled = true;
+		if (ExitButton != null && GodotObject.IsInstanceValid(ExitButton)) ExitButton.Disabled = true;
+		_log.Debug("[LevelEndUi] 🔒 所有按钮已禁用");
+	}
+
+	/// <summary>启用所有按钮（导航完成后恢复交互）</summary>
+	private void EnableAllButtons()
+	{
+		if (!GodotObject.IsInstanceValid(this))  // ★ 防止在对象释放后调用
+		{
+			_log.Debug("[LevelEndUi] ⚠ 节点已释放，跳过 EnableAllButtons()");
+			return;
+		}
+		
+		if (PurchaseButton != null && GodotObject.IsInstanceValid(PurchaseButton)) PurchaseButton.Disabled = false;
+		if (NextLevelButton != null && GodotObject.IsInstanceValid(NextLevelButton)) NextLevelButton.Disabled = false;
+		if (ExitButton != null && GodotObject.IsInstanceValid(ExitButton)) ExitButton.Disabled = false;
+		_log.Debug("[LevelEndUi] 🔓 所有按钮已启用");
 	}
 
 	#endregion

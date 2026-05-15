@@ -38,7 +38,6 @@ public partial class Choose : Node2D, IController, ISceneBehaviorProvider, ISimp
 	{
 		CleanupResources();
 	}
-
 	#endregion
 
 	#region 公开API - 场景行为

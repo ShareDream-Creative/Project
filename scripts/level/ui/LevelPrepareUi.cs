@@ -108,11 +108,8 @@ public partial class LevelPrepareUi : Control, IController, IUiPageBehaviorProvi
 	{
 		if (!@event.IsActionPressed("ui_cancel") || !Visible) return;
 
-		this.SendCommand(new ResumeGameWithClosePauseMenuCommand(new ClosePauseMenuCommandInput
-		{
-			Handle = GetPage().Handle!.Value
-		}));
-		AcceptEvent();
+		_log.Debug("[LevelPrepareUi] ESC键已禁用 - 关卡准备阶段不允许关闭暂停菜单");
+		GetViewport()?.SetInputAsHandled();
 	}
 
 	#endregion

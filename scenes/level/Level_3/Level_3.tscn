@@ -2,14 +2,24 @@
 
 [ext_resource type="Script" uid="uid://fxx0uycph8gj" path="res://scripts/level/BaseLevelController.cs" id="1_ixbw4"]
 [ext_resource type="PackedScene" uid="uid://xvap61y33u7g" path="res://scenes/platform/prohibit.tscn" id="2_3q88r"]
+[ext_resource type="PackedScene" uid="uid://dl36yxcgi18ce" path="res://scenes/platform/plate_Default.tscn" id="3_rb5dk"]
+[ext_resource type="PackedScene" uid="uid://1rmioom8ydcq" path="res://scenes/platform/wall.tscn" id="4_xrcia"]
+[ext_resource type="PackedScene" uid="uid://cjrsch8kq6j1d" path="res://scenes/platform/platform_move.tscn" id="5_k8unf"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_3q88r"]
-size = Vector2(91, 80)
+size = Vector2(27.375, 45.75)
 
-[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_wvrfo"]
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_al7y5"]
+size = Vector2(979, 139)
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_4b2n1"]
-size = Vector2(930, 94)
+[sub_resource type="CircleShape2D" id="CircleShape2D_rb5dk"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_xrcia"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_rb5dk"]
+size = Vector2(17, 294)
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_xrcia"]
 
 [node name="Level3" type="Node2D" unique_id=1381650402]
 script = ExtResource("1_ixbw4")
@@ -17,50 +27,106 @@ script = ExtResource("1_ixbw4")
 [node name="Sprite2D" type="Sprite2D" parent="." unique_id=1778252141]
 position = Vector2(461, 190)
 
-[node name="TextEdit" type="TextEdit" parent="Sprite2D" unique_id=319419734]
-custom_minimum_size = Vector2(100, 100)
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -20.5
-offset_top = -125.5
-offset_right = 124.5
-offset_bottom = 101.0
-grow_horizontal = 2
-grow_vertical = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_font_sizes/font_size = 200
-text = "3
-"
-
 [node name="End" type="Area2D" parent="." unique_id=2104215869]
 unique_name_in_owner = true
-position = Vector2(878, 388)
+position = Vector2(914, 106)
 
 [node name="collion" type="CollisionShape2D" parent="End" unique_id=2119158392]
-position = Vector2(-35.5, -30)
+position = Vector2(0, 2)
 shape = SubResource("RectangleShape2D_3q88r")
 
 [node name="Begin" type="Node2D" parent="." unique_id=1746972634]
 unique_name_in_owner = true
-position = Vector2(143, 343)
-
-[node name="StaticBody2D" type="StaticBody2D" parent="." unique_id=607954287]
-position = Vector2(82, 436)
-physics_material_override = SubResource("PhysicsMaterial_wvrfo")
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="StaticBody2D" unique_id=23076415]
-position = Vector2(389, 39)
-shape = SubResource("RectangleShape2D_4b2n1")
-
-[node name="ColorRect" type="ColorRect" parent="StaticBody2D" unique_id=810794542]
-offset_left = -75.0
-offset_top = -7.0
-offset_right = 852.0
-offset_bottom = 86.0
-metadata/_edit_use_anchors_ = true
+position = Vector2(55, 102)
 
 [node name="Prohibit" parent="." unique_id=1309119243 instance=ExtResource("2_3q88r")]
+
+[node name="defeat" type="Area2D" parent="." unique_id=1833665522]
+unique_name_in_owner = true
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="defeat" unique_id=126865309]
+position = Vector2(484.5, 640.5)
+shape = SubResource("RectangleShape2D_al7y5")
+
+[node name="CollisionShape2D2" type="CollisionShape2D" parent="defeat" unique_id=1453733938]
+position = Vector2(296, 276)
+scale = Vector2(1.2275872, 1.4677962)
+shape = SubResource("CircleShape2D_rb5dk")
+debug_color = Color(0.7302664, 0, 0.105640076, 0.41960785)
+
+[node name="CollisionShape2D3" type="CollisionShape2D" parent="defeat" unique_id=698857051]
+position = Vector2(463, 260.99997)
+scale = Vector2(1.3718336, 0.97676456)
+shape = SubResource("CircleShape2D_xrcia")
+debug_color = Color(0.7302664, 0, 0.105640076, 0.41960785)
+
+[node name="Ground" type="Node2D" parent="." unique_id=1191515474]
+
+[node name="PlateDefault" parent="Ground" unique_id=1250926864 instance=ExtResource("3_rb5dk")]
+position = Vector2(52, 161)
+
+[node name="PlateDefault2" parent="Ground" unique_id=253913052 instance=ExtResource("3_rb5dk")]
+position = Vector2(913, 148)
+
+[node name="Wall" parent="Ground" unique_id=1471831055 instance=ExtResource("4_xrcia")]
+position = Vector2(259, 289)
+scale = Vector2(1.2979316, 0.6713673)
+
+[node name="move" type="Node2D" parent="Ground" unique_id=822484276]
+position = Vector2(187, 521)
+
+[node name="PlatformMove" parent="Ground/move" unique_id=1232398423 instance=ExtResource("5_k8unf")]
+position = Vector2(520, 0)
+scale = Vector2(6.84, 0.64)
+
+[node name="left" type="Node2D" parent="Ground/move" unique_id=789554922]
+unique_name_in_owner = true
+position = Vector2(-100, 3)
+
+[node name="right" type="Node2D" parent="Ground/move" unique_id=378465794]
+unique_name_in_owner = true
+position = Vector2(520, 3)
+
+[node name="latter" type="Node2D" parent="Ground" unique_id=1070387622]
+position = Vector2(843, 169)
+
+[node name="Area2D" type="Area2D" parent="Ground/latter" unique_id=1724964101]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Ground/latter/Area2D" unique_id=8127702]
+position = Vector2(15.5, 112)
+shape = SubResource("RectangleShape2D_rb5dk")
+
+[node name="ColorRect" type="ColorRect" parent="Ground/latter/Area2D" unique_id=401143238]
+offset_left = 7.0
+offset_top = -35.0
+offset_right = 24.0
+offset_bottom = 259.0
+color = Color(0.5572767, 0.23334351, 0.8076086, 1)
+
+[node name="shout" type="Node2D" parent="Ground" unique_id=97008624]
+
+[node name="AttractBegin" type="Node2D" parent="Ground/shout" unique_id=2089259235]
+unique_name_in_owner = true
+
+[node name="AttractEnd" type="Node2D" parent="Ground/shout" unique_id=273951087]
+unique_name_in_owner = true
+
+[node name="bullet" type="Area2D" parent="Ground/shout" unique_id=1971492498]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Ground/shout/bullet" unique_id=1160436168]
+position = Vector2(857, -112)
+shape = SubResource("RectangleShape2D_xrcia")
+
+[node name="ColorRect" type="ColorRect" parent="Ground/shout/bullet" unique_id=1047444676]
+offset_left = 852.0
+offset_top = -115.0
+offset_right = 892.0
+offset_bottom = -75.0
+
+[node name="Wall2" parent="Ground" unique_id=1308964301 instance=ExtResource("4_xrcia")]
+position = Vector2(629, 287)
+scale = Vector2(1.2979316, 0.6713673)
+
+[node name="Wall3" parent="Ground" unique_id=2009859214 instance=ExtResource("4_xrcia")]
+position = Vector2(443, 289)
+scale = Vector2(1.2979316, 0.6713673)

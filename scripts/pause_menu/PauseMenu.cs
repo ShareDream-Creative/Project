@@ -78,18 +78,10 @@ public partial class PauseMenu : Control, IController, IUiPageBehaviorProvider, 
 	{
 		if (!@event.IsActionPressed("ui_cancel") || !Visible) return;
 
-		GD.Print("[PauseMenu] ═══════════ 检测到ESC键，关闭暂停菜单 ═══════════");
-		
 		this.SendCommand(new ResumeGameWithClosePauseMenuCommand(new ClosePauseMenuCommandInput
 		{
 			Handle = GetPage().Handle!.Value
 		}));
-		
-		GD.Print("[PauseMenu] ✓ 已发送ResumeGameWithClosePauseMenuCommand");
-		GD.Print("[PauseMenu]   → 关闭暂停菜单UI");
-		GD.Print("[PauseMenu]   → 恢复游戏运行（如果当前是Play阶段）");
-		GD.Print("[PauseMenu]   → 如果当前是Success/Defeat阶段，将保持当前UI显示");
-		
 		AcceptEvent();
 	}
 
@@ -110,12 +102,13 @@ public partial class PauseMenu : Control, IController, IUiPageBehaviorProvider, 
 		// 绑定保存游戏按钮点击事件
 		SaveButton.Pressed += () =>
 		{
-			// 在此保存游戏
+			_log.Info("[PauseMenu] 用户点击'保存游戏' - 功能开发中");
+			GD.Print("[PauseMenu] ⚠ 存档功能尚未实现，当前仅关闭暂停菜单");
+			
 			this.SendCommand(new ResumeGameWithClosePauseMenuCommand(new ClosePauseMenuCommandInput
 			{
 				Handle = GetPage().Handle!.Value
 			}));
-			_log.Debug("保存游戏");
 		};
 		// 绑定加载游戏按钮点击事件
 		LoadButton.Pressed += () => { _log.Debug("加载游戏"); };

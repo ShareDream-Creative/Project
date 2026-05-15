@@ -52,5 +52,10 @@ public enum GameLevel
 	/// <summary>
 	///     测试关卡状态，对应LevelTest按钮，用于开发测试的特殊关卡。
 	/// </summary>
-	LevelTest
+	LevelTest,
+
+	/// <summary>
+	///     教程关卡状态，对应LevelTeach按钮，用于教学目的的特殊关卡。
+	/// </summary>
+	LevelTeach
 }

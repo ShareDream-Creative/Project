@@ -53,35 +53,64 @@ public partial class PlayerMovementController : CharacterBody2D, IController, IP
 	///     </para>
 	///     <remarks>
 	///         取值范围: [PlayerData.MIN_SPEED, PlayerData.MAX_SPEED] = [50, 1000]
-	///         默认值: PlayerData.DEFAULT_SPEED = 300.0
+	///         默认值: 200.0 (已优化，原值为300.0，降低移动速度提升操控性)
 	///         用途: 编辑器中快速测试不同速度手感
-	///         
+	///
 	///         ✨ 增强功能:
 	///         在Godot Inspector中修改此属性时，会自动实时同步到物理模块
 	///         无需重启游戏或手动刷新，修改立即生效
-	///         
+	///
+	///         🔒 参数验证机制:
+	///         - 自动检测 NaN、Infinity 等特殊浮点值
+	///         - 自动限制在 [MIN_SPEED, MAX_SPEED] 范围内
+	///         - 无效输入自动回退到默认值 (200.0)
+	///         - 验证失败时记录警告日志
+	///
 	///         注意: 正式环境应通过PlayerDataManager配置此值
 	///     </remarks>
 	/// </summary>
-	private float _speedExport = PlayerData.DEFAULT_SPEED;
-	
+	private float _speedExport = 200.0f;
+
 	[Export]
 	public float Speed
 	{
 		get => _speedExport;
 		set
 		{
-			if (Math.Abs(_speedExport - value) < 0.001f) return;
-			
+			var validatedValue = ValidateSpeedParameter(value);
+
+			if (Math.Abs(_speedExport - validatedValue) < 0.001f) return;
+
 			var oldValue = _speedExport;
-			_speedExport = value;
-			
+			_speedExport = validatedValue;
+
 			if (_physicsMovement != null)
 			{
-				_physicsMovement.Speed = value;
-				GD.Print($"[PlayerMovementController] 🎮 Inspector修改速度: {oldValue:F1} → {value:F1} (已实时同步到物理模块)");
+				_physicsMovement.Speed = validatedValue;
+				GD.Print($"[PlayerMovementController] 🎮 Inspector修改速度: {oldValue:F1} → {validatedValue:F1} (已实时同步到物理模块)");
 			}
 		}
+	}
+
+	/// <summary>
+	///     验证速度参数的有效性
+	///     <param name="value">待验证的速度值</param>
+	///     <returns>验证后的有效速度值（无效时返回默认值）</returns>
+		private static float ValidateSpeedParameter(float value)
+	{
+		if (float.IsNaN(value) || float.IsInfinity(value))
+		{
+			GD.PrintErr($"[PlayerMovementController] ⚠️ 速度值无效 (NaN/Infinity): {value}, 使用默认值: {200.0f}");
+			return 200.0f;
+		}
+
+		if (value < PlayerData.MIN_SPEED || value > PlayerData.MAX_SPEED)
+		{
+			GD.PrintErr($"[PlayerMovementController] ⚠️ 速度值超出范围 [{PlayerData.MIN_SPEED}, {PlayerData.MAX_SPEED}]: {value}, 使用默认值: {200.0f}");
+			return 200.0f;
+		}
+
+		return value;
 	}
 
 	/// <summary>
@@ -92,33 +121,70 @@ public partial class PlayerMovementController : CharacterBody2D, IController, IP
 	///     </para>
 	///     <remarks>
 	///         取值范围: [-MAX_JUMP_VELOCITY_ABS, -MIN_JUMP_VELOCITY_ABS] = [-1000, -200]
-	///         默认值: PlayerData.DEFAULT_JUMP_VELOCITY = -500.0
-	///         当前配置跳跃高度 ≈ 127.5 像素
-	///         
+	///         默认值: -380.0 (已优化，原值为-500.0，降低跳跃高度提升操控性)
+	///         当前配置跳跃高度 ≈ 73.5 像素
+	///
 	///         ✨ 增强功能:
 	///         在Godot Inspector中修改此属性时，会自动实时同步到物理模块
 	///         无需重启游戏或手动刷新，修改立即生效
+	///
+	///         🔒 参数验证机制:
+	///         - 自动检测 NaN、Infinity 等特殊浮点值
+	///         - 自动检测正值（跳跃速度必须为负数）
+	///         - 自动限制在 [-MAX_JUMP_VELOCITY_ABS, -MIN_JUMP_VELOCITY_ABS] 范围内
+	///         - 无效输入自动回退到默认值 (-380.0)
+	///         - 验证失败时记录警告日志
 	///     </remarks>
 	/// </summary>
-	private float _jumpVelocityExport = PlayerData.DEFAULT_JUMP_VELOCITY;
-	
+	private float _jumpVelocityExport = -380.0f;
+
 	[Export]
 	public float JumpVelocity
 	{
 		get => _jumpVelocityExport;
 		set
 		{
-			if (Math.Abs(_jumpVelocityExport - value) < 0.001f) return;
-			
+			var validatedValue = ValidateJumpVelocityParameter(value);
+
+			if (Math.Abs(_jumpVelocityExport - validatedValue) < 0.001f) return;
+
 			var oldValue = _jumpVelocityExport;
-			_jumpVelocityExport = value;
-			
+			_jumpVelocityExport = validatedValue;
+
 			if (_physicsMovement != null)
 			{
-				_physicsMovement.JumpVelocity = value;
-				GD.Print($"[PlayerMovementController] 🎮 Inspector修改跳跃速度: {oldValue:F1} → {value:F1} (已实时同步到物理模块)");
+				_physicsMovement.JumpVelocity = validatedValue;
+				GD.Print($"[PlayerMovementController] 🎮 Inspector修改跳跃速度: {oldValue:F1} → {validatedValue:F1} (已实时同步到物理模块)");
 			}
 		}
+	}
+
+	/// <summary>
+	///     验证跳跃速度参数的有效性
+	///     <param name="value">待验证的跳跃速度值</param>
+	///     <returns>验证后的有效跳跃速度值（无效时返回默认值）</returns>
+	private static float ValidateJumpVelocityParameter(float value)
+	{
+		if (float.IsNaN(value) || float.IsInfinity(value))
+		{
+			GD.PrintErr($"[PlayerMovementController] ⚠️ 跳跃速度值无效 (NaN/Infinity): {value}, 使用默认值: {-380.0f}");
+			return -380.0f;
+		}
+
+		if (value >= 0)
+		{
+			GD.PrintErr($"[PlayerMovementController] ⚠️ 跳跃速度必须为负数(向上): {value}, 使用默认值: {-380.0f}");
+			return -380.0f;
+		}
+
+		var absValue = Math.Abs(value);
+		if (absValue < PlayerData.MIN_JUMP_VELOCITY_ABS || absValue > PlayerData.MAX_JUMP_VELOCITY_ABS)
+		{
+			GD.PrintErr($"[PlayerMovementController] ⚠️ 跳跃速度绝对值超出范围 [{PlayerData.MIN_JUMP_VELOCITY_ABS}, {PlayerData.MAX_JUMP_VELOCITY_ABS}]: {value}, 使用默认值: {-380.0f}");
+			return -380.0f;
+		}
+
+		return value;
 	}
 
 	/// <summary>
@@ -129,32 +195,68 @@ public partial class PlayerMovementController : CharacterBody2D, IController, IP
 	///     </para>
 	///     <remarks>
 	///         取值范围: [PlayerData.MIN_GRAVITY, PlayerData.MAX_GRAVITY] = [100, 3000]
-	///         默认值: PlayerData.DEFAULT_GRAVITY = 980.0 (接近真实地球重力)
-	///         
+	///         默认值: 1100.0 (已优化，原值为980.0，加快下落速度提升操控性)
+	///
 	///         ✨ 增强功能:
 	///         在Godot Inspector中修改此属性时，会自动实时同步到物理模块
 	///         无需重启游戏或手动刷新，修改立即生效
+	///
+	///         🔒 参数验证机制:
+	///         - 自动检测 NaN、Infinity 等特殊浮点值
+	///         - 自动检测零值或负数（重力必须为正数）
+	///         - 自动限制在 [MIN_GRAVITY, MAX_GRAVITY] 范围内
+	///         - 无效输入自动回退到默认值 (1100.0)
+	///         - 验证失败时记录警告日志
 	///     </remarks>
 	/// </summary>
-	private float _gravityExport = PlayerData.DEFAULT_GRAVITY;
-	
+	private float _gravityExport = 1100.0f;
+
 	[Export]
 	public float Gravity
 	{
 		get => _gravityExport;
 		set
 		{
-			if (Math.Abs(_gravityExport - value) < 0.001f) return;
-			
+			var validatedValue = ValidateGravityParameter(value);
+
+			if (Math.Abs(_gravityExport - validatedValue) < 0.001f) return;
+
 			var oldValue = _gravityExport;
-			_gravityExport = value;
-			
+			_gravityExport = validatedValue;
+
 			if (_physicsMovement != null)
 			{
-				_physicsMovement.Gravity = value;
-				GD.Print($"[PlayerMovementController] 🎮 Inspector修改重力: {oldValue:F1} → {value:F1} (已实时同步到物理模块)");
+				_physicsMovement.Gravity = validatedValue;
+				GD.Print($"[PlayerMovementController] 🎮 Inspector修改重力: {oldValue:F1} → {validatedValue:F1} (已实时同步到物理模块)");
 			}
 		}
+	}
+
+	/// <summary>
+	///     验证重力参数的有效性
+	///     <param name="value">待验证的重力值</param>
+	///     <returns>验证后的有效重力值（无效时返回默认值）</returns>
+	private static float ValidateGravityParameter(float value)
+	{
+		if (float.IsNaN(value) || float.IsInfinity(value))
+		{
+			GD.PrintErr($"[PlayerMovementController] ⚠️ 重力值无效 (NaN/Infinity): {value}, 使用默认值: {1100.0f}");
+			return 1100.0f;
+		}
+
+		if (value <= 0)
+		{
+			GD.PrintErr($"[PlayerMovementController] ⚠️ 重力值必须为正数: {value}, 使用默认值: {1100.0f}");
+			return 1100.0f;
+		}
+
+		if (value < PlayerData.MIN_GRAVITY || value > PlayerData.MAX_GRAVITY)
+		{
+			GD.PrintErr($"[PlayerMovementController] ⚠️ 重力值超出范围 [{PlayerData.MIN_GRAVITY}, {PlayerData.MAX_GRAVITY}]: {value}, 使用默认值: {1100.0f}");
+			return 1100.0f;
+		}
+
+		return value;
 	}
 
 	#endregion

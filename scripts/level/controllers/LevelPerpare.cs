@@ -41,6 +41,17 @@ public partial class LevelPerpare : Node2D, IController, ISceneBehaviorProvider,
 		CleanupResources();
 	}
 
+
+	/// <summary>拦截输入事件 - 准备阶段禁用ESC暂停功能</summary>
+	public override void _Input(InputEvent @event)
+	{
+		if (@event.IsActionPressed("ui_cancel"))
+		{
+			_log.Debug("[LevelPerpare] ESC键已禁用 - 准备阶段不允许打开暂停菜单");
+			GetViewport()?.SetInputAsHandled();
+		}
+	}
+
 	#endregion
 
 	#region 公开API - 场景行为

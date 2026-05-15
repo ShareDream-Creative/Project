@@ -1,0 +1,14 @@
+[gd_scene format=3 uid="uid://c1lwahk41awbt"]
+
+[ext_resource type="Script" uid="uid://csmw2bjw7kqop" path="res://scripts/trap/TrapStatic.cs" id="1_gw84a"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_ipdaw"]
+
+[node name="TrapStatic" type="Node2D" unique_id=256416211]
+script = ExtResource("1_gw84a")
+
+[node name="Area2D" type="Area2D" parent="." unique_id=486791567]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Area2D" unique_id=1357713130]
+shape = SubResource("RectangleShape2D_ipdaw")
+debug_color = Color(0.73333335, 0.0627451, 0.15686275, 0.41960785)

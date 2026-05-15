@@ -80,12 +80,21 @@ public class LevelInputControllerImpl : ILevelInputController
             case LevelPhase.Success:
                 HandleSuccessPhaseInput(@event);
                 break;
+
+            case LevelPhase.Defeat:
+                HandleSuccessPhaseInput(@event);
+                break;
         }
     }
 
     /// <summary>处理ESC键按下</summary>
     public void HandleEscapeKeyPress()
     {
+        if (_ownerNode.GetViewport()?.IsInputHandled() == true)
+        {
+            return;
+        }
+
         if (_stateMachineSystem?.Current is not PlayingState)
         {
             return;
@@ -114,45 +123,24 @@ public class LevelInputControllerImpl : ILevelInputController
     /// <summary>处理构建阶段的输入（严格限制模式）</summary>
     private void HandleBuildPhaseInput(InputEvent @event)
     {
-        if (@event is InputEventKey keyEvent && keyEvent.Pressed)
+        var isEscapeKeyPressed = 
+            (@event is InputEventKey keyEvent && keyEvent.Pressed &&
+             (keyEvent.Keycode == Key.Escape || keyEvent.PhysicalKeycode == Key.Escape)) ||
+            @event.IsActionPressed("ui_cancel");
+
+        if (isEscapeKeyPressed)
         {
-            var keyCode = keyEvent.Keycode;
-            var physicalKey = keyEvent.PhysicalKeycode;
-
-            var isEscape = keyCode == Key.Escape || physicalKey == Key.Escape;
-
-            if (isEscape)
-            {
-                _logDebug("[LevelInputController] [Build阶段] ESC键已放行");
-                HandleEscapeKeyPress();
-                return;
-            }
-
-            _logDebug($"[LevelInputController] [Build阶段] 键盘输入已被拦截: Key={keyCode}, Physical={physicalKey}");
-            _ownerNode.GetViewport()?.SetInputAsHandled();
+            _logDebug("[LevelInputController] [Build阶段] ESC键已放行");
+            HandleEscapeKeyPress();
             return;
         }
 
-        if (@event is InputEventJoypadButton || @event is InputEventJoypadMotion)
+        if (@event is InputEventKey || @event is InputEventJoypadButton ||
+            @event is InputEventJoypadMotion || @event.IsActionPressed("ui_accept") ||
+            @event.IsActionPressed("ui_select"))
         {
-            _logDebug("[LevelInputController] [Build阶段] 手柄输入已被拦截");
+            _logDebug("[LevelInputController] [Build阶段] 输入已被拦截");
             _ownerNode.GetViewport()?.SetInputAsHandled();
-            return;
-        }
-
-        if (@event.IsActionPressed("ui_accept") ||
-            @event.IsActionPressed("ui_select") ||
-            @event.IsActionPressed("ui_cancel"))
-        {
-            if (@event.IsActionPressed("ui_cancel"))
-            {
-                HandleEscapeKeyPress();
-                return;
-            }
-
-            _logDebug("[LevelInputController] [Build阶段] UI动作输入已被拦截");
-            _ownerNode.GetViewport()?.SetInputAsHandled();
-            return;
         }
     }
 
@@ -168,14 +156,9 @@ public class LevelInputControllerImpl : ILevelInputController
     /// <summary>处理成功阶段的输入（完全禁止）</summary>
     private void HandleSuccessPhaseInput(InputEvent @event)
     {
-        if (@event is InputEventKey || @event is InputEventJoypadButton || @event is InputEventJoypadMotion)
+        if (@event is InputEventKey || @event is InputEventJoypadButton || @event is InputEventJoypadMotion || @event.IsActionPressed("ui_cancel"))
         {
             _ownerNode.GetViewport()?.SetInputAsHandled();
-        }
-
-        if (@event.IsActionPressed("ui_cancel"))
-        {
-            HandleEscapeKeyPress();
         }
     }
 
