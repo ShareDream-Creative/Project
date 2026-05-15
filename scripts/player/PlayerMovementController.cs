@@ -10,6 +10,7 @@ using GFrameworkGodotTemplate.scripts.player.input;
 using GFrameworkGodotTemplate.scripts.player.listeners;
 using GFrameworkGodotTemplate.scripts.player.physics;
 using GFrameworkGodotTemplate.scripts.player.state;
+using GFrameworkGodotTemplate.scripts.utility;
 using Godot;
 
 namespace GFrameworkGodotTemplate.scripts.player;
@@ -308,12 +309,12 @@ public partial class PlayerMovementController : CharacterBody2D, IController, IP
 	/// </summary>
 	private void InitializeGlobalServices()
 	{
-		_globalInputService = FindGameplayInputService();
+		_globalInputService = NodeTreeHelper.GetGlobalInputService(this);
 		_dataManager = PlayerDataManager.Instance;
 		
 		if (_globalInputService != null)
 		{
-			_log.Debug("成功获取全局游戏玩法输入服务");
+			_log.Debug("成功获取全局游戏玩法输入服务 (通过NodeTreeHelper)");
 		}
 		else
 		{
@@ -356,44 +357,6 @@ public partial class PlayerMovementController : CharacterBody2D, IController, IP
 		_dataManager.Data.AddListener(this);
 		
 		_log.Debug("已注册PlayerDataListenerBridge和PlayerMovementController为PlayerData监听器");
-	}
-
-	/// <summary>
-	///     查找全局游戏玩法输入服务
-	///     <para>
-	///         从场景树中查找GlobalInputController节点
-	///         并提取其GameplayInputService属性
-	///     </para>
-	///     <returns>
-	///     成功时返回IGlobalGameplayInputService实例
-	///     失败时返回null (节点不存在或服务未初始化)
-	///     </returns>
-	/// </summary>
-	private IGlobalGameplayInputService? FindGameplayInputService()
-	{
-		var tree = GetTree();
-		if (tree == null)
-		{
-			_log.Error("无法获取 SceneTree!");
-			return null;
-		}
-
-		try
-		{
-			var globalController = tree.Root.GetNode<GlobalInputController>("GlobalInputController");
-			
-			if (globalController != null && globalController.GameplayInputService != null)
-			{
-				return globalController.GameplayInputService;
-			}
-			
-			return null;
-		}
-		catch (Exception ex)
-		{
-			_log.Error($"查找 GlobalInputController 失败: {ex.Message}");
-			return null;
-		}
 	}
 
 	#endregion

@@ -25,7 +25,7 @@ using GFrameworkGodotTemplate.scripts.enums.scene;
 using GFrameworkGodotTemplate.scripts.enums.ui;
 using GFrameworkGodotTemplate.scripts.enums;
 using GFrameworkGodotTemplate.scripts.level.controllers;
-using GFrameworkGodotTemplate.global;
+using GFrameworkGodotTemplate.scripts.utility;
 using Godot;
 
 namespace GFrameworkGodotTemplate.scripts.level.ui;
@@ -177,7 +177,7 @@ public partial class LevelDefeatUi : Control, IController, IUiPageBehaviorProvid
 		InitializeComponents();
 		SetupEventHandlers();
 		
-		SetDefeatPhaseToBlockInput();
+		PhaseBlockingHelper.SetPhaseAndBlockInput(this, LevelPhase.Defeat, "[LevelDefateUi]");
 		
 		_log.Info("[LevelDefateUi] ✓✓✓ 失败界面初始化完成！");
 		_log.Info("[LevelDefateUi] 当前职责: 自主管理所有按钮事件和导航逻辑");
@@ -251,60 +251,8 @@ public partial class LevelDefeatUi : Control, IController, IUiPageBehaviorProvid
 	private void FindLevelController()
 	{
 		_log.Info("[LevelDefateUi] 正在查找BaseLevelController...");
-		_log.Debug($"[LevelDefateUi] 当前节点路径: {GetPath()}");
-		_log.Debug($"[LevelDefateUi] Owner: {(Owner != null ? $"{Owner.Name} ({Owner.GetType().Name})" : "NULL")}");
 		
-		if (Owner != null)
-		{
-			_log.Debug("[LevelDefateUi] 尝试方法1: 通过Owner向上遍历...");
-			_levelController = FindParentOfType<BaseLevelController>(Owner);
-			
-			if (_levelController != null)
-			{
-				_log.Info("[LevelDefateUi] ✓ 找到BaseLevelController");
-				_log.Debug($"[LevelDefateUi] 控制器路径: {_levelController.GetPath()}");
-				return;
-			}
-		}
-
-		_log.Debug("[LevelDefateUi] 尝试方法2: 从当前节点向上遍历...");
-		_levelController = FindParentOfType<BaseLevelController>(this);
-		
-		if (_levelController != null)
-		{
-			_log.Info("[LevelDefateUi] ✓ 通过父节点遍历找到BaseLevelController");
-			_log.Debug($"[LevelDefateUi] 控制器路径: {_levelController.GetPath()}");
-			return;
-		}
-
-		_log.Debug("[LevelDefateUi] 未找到BaseLevelController（非致命错误）");
-	}
-
-	/// <summary>从指定节点开始向上遍历，查找目标类型的父节点</summary>
-	private T? FindParentOfType<T>(Node startNode) where T : Node
-	{
-		var current = startNode;
-		var maxDepth = 20;
-		var depth = 0;
-		
-		while (current != null && depth < maxDepth)
-		{
-			if (current is T target)
-			{
-				_log.Debug($"[LevelDefateUi] 在深度{depth}处找到: {current.Name} ({current.GetType().Name})");
-				return target;
-			}
-			
-			current = current.GetParent();
-			depth++;
-		}
-		
-		if (depth >= maxDepth)
-		{
-			_log.Warn($"[LevelDefateUi] 向上遍历超过最大深度({maxDepth})，停止搜索");
-		}
-		
-		return null;
+		_levelController = NodeTreeHelper.FindLevelController(this, "[LevelDefateUi]");
 	}
 
 	/// <summary>记录可用的按钮信息</summary>
@@ -674,92 +622,6 @@ public partial class LevelDefeatUi : Control, IController, IUiPageBehaviorProvid
 	 ///         - UI 操作: 不受影响（鼠标点击按钮正常工作）
 	 ///     </remarks>
 	/// </summary>
-	private void SetDefeatPhaseToBlockInput()
-	{
-		_log.Info("[LevelDefateUi] ═══════════ 设置Defeat阶段并阻断输入 ═══════════");
-		
-		bool success = false;
-		
-		if (_levelController != null)
-		{
-			try
-			{
-				var previousPhase = _levelController.CurrentPhase;
-				
-				_log.Info($"[LevelDefateUi] 当前阶段: {previousPhase}");
-				_log.Info("[LevelDefateUi] 正在切换到 Defeat 阶段 (通过BaseLevelController)...");
-				
-				_levelController.SetCurrentPhase(GFrameworkGodotTemplate.scripts.enums.LevelPhase.Defeat);
-				
-				_log.Info("✓✓✓ Defeat阶段设置成功！");
-				_log.Info($"[LevelDefateUi] 阶段变更: {previousPhase} → LevelPhase.Defeat");
-				success = true;
-			}
-			catch (Exception ex)
-			{
-				_log.Warn($"[LevelDefateUi] ⚠️ 通过BaseLevelController设置失败: {ex.Message}");
-			}
-		}
-		else
-		{
-			_log.Warn("[LevelDefateUi] ⚠️ BaseLevelController不可用，尝试备用方案...");
-		}
-		
-		if (!success)
-		{
-			SetDefeatPhaseDirectly();
-		}
-		
-		_log.Info("[LevelDefateUi] 输入阻断效果:");
-		_log.Info("  • HorizontalDirection = 0 (玩家无法移动)");
-		_log.Info("  • IsJumpPressed = false (玩家无法跳跃)");
-		_log.Info("  • IsInteractPressed = false (无法交互按钮/开关)");
-		_log.Info("  • IsInputEnabled = false (全局输入已禁用)");
-		_log.Info("[LevelDefateUi] ═══════════ 输入阻断配置完成 ═══════════");
-	}
-
-	/// <summary>
-	///     直接通过GlobalInputController设置Defeat阶段（备用方案）
-	///     <para>
-	///         当BaseLevelController不可用时调用此方法
-	///         直接从场景树获取GlobalInputController并设置阶段
-	 ///     </para>
-	/// </summary>
-	private void SetDefeatPhaseDirectly()
-	{
-		_log.Info("[LevelDefateUi] 使用备用方案: 直接操作GlobalInputController...");
-		
-		try
-		{
-			var tree = GetTree();
-			if (tree == null)
-			{
-				_log.Error("[LevelDefateUi] ❌ 无法获取SceneTree");
-				return;
-			}
-
-			var globalController = tree.Root.GetNode<GlobalInputController>("GlobalInputController");
-			
-			if (globalController?.GameplayInputService == null)
-			{
-				_log.Error("[LevelDefateUi] ❌ GlobalInputController或GameplayInputService不可用");
-				return;
-			}
-
-			var previousPhase = globalController.GameplayInputService.CurrentPhase;
-			
-			globalController.GameplayInputService.SetCurrentPhase(GFrameworkGodotTemplate.scripts.enums.LevelPhase.Defeat);
-			
-			_log.Info("✓✓✓ 备用方案成功！直接设置Defeat阶段");
-			_log.Info($"[LevelDefateUi] 阶段变更: {previousPhase} → LevelPhase.Defeat (直接)");
-		}
-		catch (Exception ex)
-		{
-			_log.Error($"[LevelDefateUi] ❌ 备用方案也失败: {ex.Message}");
-			_log.Error("[LevelDefateUi]   ⚠️ 输入可能不会被完全阻断");
-		}
-	}
-
 	/// <summary>重置关卡阶段标志</summary>
 	private void ResetLevelPhaseFlags()
 	{

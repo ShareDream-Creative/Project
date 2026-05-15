@@ -3,6 +3,7 @@ using GFramework.Core.Abstractions.Controller;
 using GFramework.SourceGenerators.Abstractions.Logging;
 using GFramework.SourceGenerators.Abstractions.Rule;
 using GFrameworkGodotTemplate.global;
+using GFrameworkGodotTemplate.scripts.utility;
 
 namespace GFrameworkGodotTemplate.scripts.world;
 
@@ -262,14 +263,14 @@ public partial class MovePlatformController : Node2D, IController
 		
 		try
 		{
-			_globalInputService = FindGameplayInputService();
+			_globalInputService = NodeTreeHelper.GetGlobalInputService(this);
 			if (_globalInputService != null)
 			{
-				_log.Info("[MovePlatformController] ✅ 全局输入服务已获取");
+				_log.Info("[MovePlatformController] ✅ 全局输入服务已获取 (通过NodeTreeHelper)");
 			}
 			else
 			{
-				_log.Warn("[MovePlatformController] ⚠️ 无法获取全局输入服务，将使用后备输入检测方案");
+				_log.Warn("[MovePlatformController] ⚠️ 无法获取全局输入服务，将使用直接键盘检测方案");
 			}
 		}
 		catch (Exception ex)
@@ -464,9 +465,9 @@ public partial class MovePlatformController : Node2D, IController
 		
 		bool isInteractPressed = false;
 		
-		if (_globalInputService != null)
+		if (_globalInputService != null && _globalInputService.IsInputEnabled)
 		{
-			isInteractPressed = _globalInputService.IsInteractPressed;
+			isInteractPressed = keyEvent.Keycode == Key.E && keyEvent.Pressed;
 		}
 		else
 		{
@@ -623,47 +624,6 @@ public partial class MovePlatformController : Node2D, IController
 		_log.Info("════════════ 平台停止移动 ════════════");
 		_log.Info("[MovePlatformController] ⏹️ 平台移动已停止");
 		_log.Debug($"[MovePlatformController] 当前位置: {PlatformMove?.Position}");
-	}
-
-	#endregion
-
-	#region 私有方法 - 服务查找
-
-	/// <summary>
-	///     查找全局游戏玩法输入服务
-	///     <para>
-	///         通过 GlobalInputController 节点获取 IGlobalGameplayInputService 实例
-	 ///     </para>
-	///     <returns>
-	///     成功时返回IGlobalGameplayInputService实例
-	///     失败时返回null (节点不存在或服务未初始化)
-	///     </returns>
-	/// </summary>
-	private IGlobalGameplayInputService? FindGameplayInputService()
-	{
-		var tree = GetTree();
-		if (tree == null)
-		{
-			_log.Warn("[MovePlatformController] ⚠️ 无法获取 SceneTree!");
-			return null;
-		}
-
-		try
-		{
-			var globalController = tree.Root.GetNode<GlobalInputController>("GlobalInputController");
-			
-			if (globalController != null && globalController.GameplayInputService != null)
-			{
-				return globalController.GameplayInputService;
-			}
-			
-			return null;
-		}
-		catch (Exception ex)
-		{
-			_log.Warn($"[MovePlatformController] ⚠️ 查找 GlobalInputController 失败: {ex.Message}");
-			return null;
-		}
 	}
 
 	#endregion

@@ -13,7 +13,7 @@ using GFrameworkGodotTemplate.scripts.enums.scene;
 using GFrameworkGodotTemplate.scripts.enums.ui;
 using GFrameworkGodotTemplate.scripts.enums;
 using GFrameworkGodotTemplate.scripts.level.controllers;
-using GFrameworkGodotTemplate.global;
+using GFrameworkGodotTemplate.scripts.utility;
 using Godot;
 
 namespace GFrameworkGodotTemplate.scripts.level.ui;
@@ -171,7 +171,7 @@ public partial class LevelSuccessUi : Control, IController, IUiPageBehaviorProvi
 		InitializeComponents();
 		SetupEventHandlers();
 		
-		SetSuccessPhaseToBlockInput();
+		PhaseBlockingHelper.SetPhaseAndBlockInput(this, LevelPhase.Success, "[LevelSuccessUi]");
 		
 		_log.Info("[LevelSuccessUi] ✓✓✓ 成功界面初始化完成！🎉");
 		_log.Info("[LevelSuccessUi] 当前职责: 自主管理所有按钮事件和导航逻辑");
@@ -245,60 +245,8 @@ public partial class LevelSuccessUi : Control, IController, IUiPageBehaviorProvi
 	private void FindLevelController()
 	{
 		_log.Info("[LevelSuccessUi] 正在查找BaseLevelController...");
-		_log.Debug($"[LevelSuccessUi] 当前节点路径: {GetPath()}");
-		_log.Debug($"[LevelSuccessUi] Owner: {(Owner != null ? $"{Owner.Name} ({Owner.GetType().Name})" : "NULL")}");
 		
-		if (Owner != null)
-		{
-			_log.Debug("[LevelSuccessUi] 尝试方法1: 通过Owner向上遍历...");
-			_levelController = FindParentOfType<BaseLevelController>(Owner);
-			
-			if (_levelController != null)
-			{
-				_log.Info("[LevelSuccessUi] ✓ 找到BaseLevelController");
-				_log.Debug($"[LevelSuccessUi] 控制器路径: {_levelController.GetPath()}");
-				return;
-			}
-		}
-
-		_log.Debug("[LevelSuccessUi] 尝试方法2: 从当前节点向上遍历...");
-		_levelController = FindParentOfType<BaseLevelController>(this);
-		
-		if (_levelController != null)
-		{
-			_log.Info("[LevelSuccessUi] ✓ 通过父节点遍历找到BaseLevelController");
-			_log.Debug($"[LevelSuccessUi] 控制器路径: {_levelController.GetPath()}");
-			return;
-		}
-
-		_log.Debug("[LevelSuccessUi] 未找到BaseLevelController（非致命错误）");
-	}
-
-	/// <summary>从指定节点开始向上遍历，查找目标类型的父节点</summary>
-	private T? FindParentOfType<T>(Node startNode) where T : Node
-	{
-		var current = startNode;
-		var maxDepth = 20;
-		var depth = 0;
-		
-		while (current != null && depth < maxDepth)
-		{
-			if (current is T target)
-			{
-				_log.Debug($"[LevelSuccessUi] 在深度{depth}处找到: {current.Name} ({current.GetType().Name})");
-				return target;
-			}
-			
-			current = current.GetParent();
-			depth++;
-		}
-		
-		if (depth >= maxDepth)
-		{
-			_log.Warn($"[LevelSuccessUi] 向上遍历超过最大深度({maxDepth})，停止搜索");
-		}
-		
-		return null;
+		_levelController = NodeTreeHelper.FindLevelController(this, "[LevelSuccessUi]");
 	}
 
 	/// <summary>记录可用的按钮信息</summary>
@@ -659,92 +607,6 @@ public partial class LevelSuccessUi : Control, IController, IUiPageBehaviorProvi
 	 ///         - UI 操作: 不受影响（鼠标点击按钮正常工作）
 	 ///     </remarks>
 	/// </summary>
-	private void SetSuccessPhaseToBlockInput()
-	{
-		_log.Info("[LevelSuccessUi] ═══════════ 设置Success阶段并阻断输入 ═══════════");
-		
-		bool success = false;
-		
-		if (_levelController != null)
-		{
-			try
-			{
-				var previousPhase = _levelController.CurrentPhase;
-				
-				_log.Info($"[LevelSuccessUi] 当前阶段: {previousPhase}");
-				_log.Info("[LevelSuccessUi] 正在切换到 Success 阶段 (通过BaseLevelController)...");
-				
-				_levelController.SetCurrentPhase(GFrameworkGodotTemplate.scripts.enums.LevelPhase.Success);
-				
-				_log.Info("✓✓✓ Success阶段设置成功！");
-				_log.Info($"[LevelSuccessUi] 阶段变更: {previousPhase} → LevelPhase.Success");
-				success = true;
-			}
-			catch (Exception ex)
-			{
-				_log.Warn($"[LevelSuccessUi] ⚠️ 通过BaseLevelController设置失败: {ex.Message}");
-			}
-		}
-		else
-		{
-			_log.Warn("[LevelSuccessUi] ⚠️ BaseLevelController不可用，尝试备用方案...");
-		}
-		
-		if (!success)
-		{
-			SetSuccessPhaseDirectly();
-		}
-		
-		_log.Info("[LevelSuccessUi] 输入阻断效果:");
-		_log.Info("  • HorizontalDirection = 0 (玩家无法移动)");
-		_log.Info("  • IsJumpPressed = false (玩家无法跳跃)");
-		_log.Info("  • IsInteractPressed = false (无法交互按钮/开关)");
-		_log.Info("  • IsInputEnabled = false (全局输入已禁用)");
-		_log.Info("[LevelSuccessUi] ═══════════ 输入阻断配置完成 ═══════════");
-	}
-
-	/// <summary>
-	///     直接通过GlobalInputController设置Success阶段（备用方案）
-	 ///     <para>
-	 ///         当BaseLevelController不可用时调用此方法
-	 ///         直接从场景树获取GlobalInputController并设置阶段
-	 ///     </para>
-	/// </summary>
-	private void SetSuccessPhaseDirectly()
-	{
-		_log.Info("[LevelSuccessUi] 使用备用方案: 直接操作GlobalInputController...");
-		
-		try
-		{
-			var tree = GetTree();
-			if (tree == null)
-			{
-				_log.Error("[LevelSuccessUi] ❌ 无法获取SceneTree");
-				return;
-			}
-
-			var globalController = tree.Root.GetNode<GlobalInputController>("GlobalInputController");
-			
-			if (globalController?.GameplayInputService == null)
-			{
-				_log.Error("[LevelSuccessUi] ❌ GlobalInputController或GameplayInputService不可用");
-				return;
-			}
-
-			var previousPhase = globalController.GameplayInputService.CurrentPhase;
-			
-			globalController.GameplayInputService.SetCurrentPhase(GFrameworkGodotTemplate.scripts.enums.LevelPhase.Success);
-			
-			_log.Info("✓✓✓ 备用方案成功！直接设置Success阶段");
-			_log.Info($"[LevelSuccessUi] 阶段变更: {previousPhase} → LevelPhase.Success (直接)");
-		}
-		catch (Exception ex)
-		{
-			_log.Error($"[LevelSuccessUi] ❌ 备用方案也失败: {ex.Message}");
-			_log.Error("[LevelSuccessUi]   ⚠️ 输入可能不会被完全阻断");
-		}
-	}
-
 	/// <summary>重置关卡阶段标志</summary>
 
 	/// <summary>
