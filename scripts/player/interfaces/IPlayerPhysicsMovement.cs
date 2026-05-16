@@ -254,19 +254,20 @@ public interface IPlayerPhysicsMovement
 	/// <summary>
 	///     应用计算后的速度并执行物理移动
 	///     <para>
-	///         内部调用MoveAndSlide处理滑动碰撞
+	///         内部调用MoveAndSlide处理滑动碰撞，并同步碰撞响应速度
 	///     </para>
 	///     <param name="body">要移动的CharacterBody2D节点实例</param>
-	///     <remarks>
+	/// <remarks>
 	///         执行流程:
 	///         1. 将内部速度向量赋值给body.Velocity
 	///         2. 调用body.MoveAndSlide()执行移动和碰撞
-	///         3. 更新IsOnFloor状态(基于碰撞结果)
+	///         3. 将MoveAndSlide()修改后的速度同步回内部状态
+	///         4. 更新IsOnFloor状态(基于碰撞结果)
 	///         
 	///         MoveAndSlide特性:
 	///         - 自动处理滑动碰撞(沿墙壁滑动)
 	///         - 自动处理斜坡运动
-	///         - 更新IsOnWall(), IsOnCeiling()等状态
+	///         - **会修改body.Velocity** (碰撞响应、地板修正等)
 	///         
 	///         调用时机:
 	///         应在所有速度更新完成后调用一次
@@ -275,14 +276,14 @@ public interface IPlayerPhysicsMovement
 	///         注意事项:
 	///         - 必须传入有效的CharacterBody2D实例
 	///         - 不应在一次物理更新中多次调用
-	///     </remarks>
+	/// </remarks>
 	/// </summary>
 	void Move(CharacterBody2D body);
 
 	/// <summary>
-	///     立即停止所有移动(归零速度)
+	///     立即停止所有移动并完全重置物理状态
 	///     <para>
-	///         用于状态切换或暂停时立即制动
+	///         用于状态切换、暂停或重生时立即制动
 	///     </para>
 	///     <remarks>
 	///         使用场景:
@@ -290,14 +291,18 @@ public interface IPlayerPhysicsMovement
 	///         - 场景切换时清除速度状态
 	///         - 死亡或受击时立即停止
 	///         - 输入禁用时(非PlayingState)
+	///         - 玩家重生/重置到起点时完全清除物理状态
 	///         
 	///         实现细节:
-	///         直接将速度向量设置为Vector2.Zero
+	///         1. 将速度向量设置为Vector2.Zero（清除累积速度）
+	///         2. 重置地面检测状态为true（模拟刚放置在地面上）
+	///         
 	///         不使用减速过程，而是瞬间停止
 	///         
 	///         后续影响:
-	///         下次Move()时会保持静止状态
-	///         直到收到新的输入指令
+	///         - 下次Move()时会保持静止状态
+	///         - ApplyGravity()不会立即应用重力（因为IsOnFloor=true）
+	///         - 直到收到新的输入指令或离开地面
 	///     </remarks>
 	/// </summary>
 	void StopImmediately();

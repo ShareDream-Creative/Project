@@ -77,8 +77,12 @@ public class PlayerData
 
 	/// <summary>
 	///     默认移动速度 (像素/秒)
+	///     <para>
+	///         已优化: 从300降至200，提升操控性和精确度
+	///         与 PlayerMovementController.Export 属性默认值保持一致
+	///     </para>
 	/// </summary>
-	public const float DEFAULT_SPEED = 300.0f;
+	public const float DEFAULT_SPEED = 200.0f;
 
 	/// <summary>
 	///     最小跳跃速度绝对值 (像素/秒)
@@ -93,8 +97,12 @@ public class PlayerData
 
 	/// <summary>
 	///     默认跳跃速度 (像素/秒, 负值表示向上)
+	///     <para>
+	///         已优化: 从-500降至-380，降低跳跃高度提升操控性
+	///         与 PlayerMovementController.Export 属性默认值保持一致
+	///     </para>
 	/// </summary>
-	public const float DEFAULT_JUMP_VELOCITY = -500.0f;
+	public const float DEFAULT_JUMP_VELOCITY = -380.0f;
 
 	/// <summary>
 	///     最小重力加速度 (像素/秒²)
@@ -108,9 +116,12 @@ public class PlayerData
 
 	/// <summary>
 	///     默认重力加速度 (像素/秒²)
-	///     从Godot项目设置获取的实际默认值
+	///     <para>
+	///         已优化: 从980提升至1100，加快下落速度缩短空中时间
+	///         与 PlayerMovementController.Export 属性默认值保持一致
+	///     </para>
 	/// </summary>
-	public const float DEFAULT_GRAVITY = 980.0f;
+	public const float DEFAULT_GRAVITY = 1100.0f;
 
 	/// <summary>
 	///     最小奔跑速度倍率
@@ -189,10 +200,10 @@ public class PlayerData
 	///     </para>
 	///     <remarks>
 	///         取值范围: [MIN_SPEED, MAX_SPEED] = [50, 1000]
-	///         默认值: 300.0
+	///         默认值: 200.0 (已优化)
 	///         典型值:
 	///           - 慢速角色: 150-250
-	///           - 普通角色: 300-400
+	///           - 普通角色: 200-400
 	///           - 快速角色: 500-700
 	///         
 	///         验证机制:

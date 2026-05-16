@@ -49,11 +49,27 @@ position = Vector2(737, 299)
 shape = SubResource("RectangleShape2D_5qjee")
 debug_color = Color(0.7302664, 0, 0.105640076, 0.41960785)
 
+[node name="ColorRect" type="ColorRect" parent="defeat/CollisionShape2D2" unique_id=1268488891]
+offset_left = -96.0
+offset_top = -10.0
+offset_right = -56.0
+offset_bottom = 30.0
+scale = Vector2(4.7999954, 0.48000246)
+color = Color(0.7411765, 0, 0.14509805, 0.3529412)
+
 [node name="CollisionShape2D3" type="CollisionShape2D" parent="defeat" unique_id=1883055203]
 position = Vector2(463, 260.99997)
 scale = Vector2(-0.07999635, 13.92)
 shape = SubResource("RectangleShape2D_5qjee")
 debug_color = Color(0.7302664, 0, 0.105640076, 0.41960785)
+
+[node name="ColorRect" type="ColorRect" parent="defeat/CollisionShape2D3" unique_id=513202498]
+offset_left = -75.00333
+offset_top = -9.98563
+offset_right = -35.003326
+offset_bottom = 30.01437
+scale = Vector2(3.962832, 0.495917)
+color = Color(0.7411765, 0, 0.14509805, 0.3529412)
 
 [node name="ground" type="Node2D" parent="." unique_id=1083132380]
 
@@ -76,10 +92,6 @@ scale = Vector2(1.5999997, 1)
 [node name="moveplatform" type="Node2D" parent="ground" unique_id=780567457]
 position = Vector2(485, 487)
 script = ExtResource("5_dtxep")
-
-[node name="PlatformMove" parent="ground/moveplatform" unique_id=1232398423 instance=ExtResource("5_banp1")]
-position = Vector2(135, 0)
-scale = Vector2(6.84, 0.64)
 
 [node name="left" type="Node2D" parent="ground/moveplatform" unique_id=1852955102]
 unique_name_in_owner = true
@@ -111,3 +123,15 @@ offset_top = -9.908409
 offset_right = 9.762171
 offset_bottom = 9.908405
 color = Color(6.7383053e-06, 0.5697789, 0.92449546, 1)
+
+[node name="ColorRect" type="ColorRect" parent="ground/moveplatform" unique_id=735532899]
+offset_left = -181.0
+offset_top = -6.0
+offset_right = -141.0
+offset_bottom = 34.0
+scale = Vector2(8.171859, 0.3538515)
+color = Color(0, 0, 0, 0.38431373)
+
+[node name="PlatformMove" parent="ground/moveplatform" unique_id=1232398423 instance=ExtResource("5_banp1")]
+position = Vector2(135, 0)
+scale = Vector2(6.84, 1.16)

@@ -12,11 +12,14 @@ using GFrameworkGodotTemplate.scripts.core.ui.level;
 using GFrameworkGodotTemplate.scripts.core.controller.level;
 using GFrameworkGodotTemplate.scripts.entities.level;
 using GFrameworkGodotTemplate.scripts.level.interfaces;
+using GFrameworkGodotTemplate.scripts.level.controllers;
+using GFrameworkGodotTemplate.scripts.level.config;
 using GFrameworkGodotTemplate.scripts.cqrs.game.command;
 using GFrameworkGodotTemplate.scripts.cqrs.pause_menu.command.input;
 using GFrameworkGodotTemplate.scripts.enums.ui;
 using GFrameworkGodotTemplate.scripts.enums;
 using GFrameworkGodotTemplate.scripts.player;
+using GFrameworkGodotTemplate.scripts.trap;
 using Godot;
 
 namespace GFrameworkGodotTemplate.scripts.level;
@@ -63,12 +66,6 @@ public partial class BaseLevelController : Node2D, IController, ISceneBehaviorPr
 	/// </summary>
 	private IGlobalGameplayInputService? _globalInputService;
 
-	/// <summary>当前关卡阶段状态</summary>
-	private LevelPhase _currentPhase = LevelPhase.Build;
-
-	/// <summary>是否已完成游戏</summary>
-	private bool _isGameCompleted;
-
 	#region 重构后的组件接口实例
 
 	/// <summary>UI管理器实例</summary>
@@ -83,6 +80,21 @@ public partial class BaseLevelController : Node2D, IController, ISceneBehaviorPr
 	/// <summary>规则集成器实例</summary>
 	private ILevelRulesIntegration? _rulesIntegration;
 
+	/// <summary>
+	///     全局陷阱事件回调引用（用于取消订阅）
+	 ///     <para>
+	 ///         保存对 TrapEventManager 的订阅引用，
+	 ///         以便在 _ExitTree 时正确取消订阅，避免内存泄漏
+	 ///     </para>
+	/// </summary>
+	private Action<Node>? _trapEventCallback;
+
+	/// <summary>关卡控制器数据实例</summary>
+	protected readonly LevelControllerData Data = new();
+
+	/// <summary>玩家重置处理器</summary>
+	protected IPlayerResetHandler? ResetHandler;
+
 	#endregion
 
 	#endregion
@@ -90,10 +102,10 @@ public partial class BaseLevelController : Node2D, IController, ISceneBehaviorPr
 	#region 节点引用
 
 	/// <summary>玩家出生点位置节点</summary>
-	protected Node2D BeginPosition => GetNode<Node2D>("%Begin");
+	protected Node2D BeginPosition => Data.BeginPositionNode!;
 
 	/// <summary>终点碰撞区域</summary>
-	protected Area2D EndArea => GetNode<Area2D>("%End");
+	protected Area2D EndArea => Data.EndAreaNode!;
 
 	/// <summary>
 	///     失败区域（掉落/危险区域）
@@ -109,35 +121,103 @@ public partial class BaseLevelController : Node2D, IController, ISceneBehaviorPr
 	#region 公开属性
 
 	/// <summary>获取当前关卡阶段</summary>
-	public LevelPhase CurrentPhase => _currentPhase;
+	public LevelPhase CurrentPhase => Data.CurrentPhase;
 
 	/// <summary>获取是否处于构建阶段（输入受限）</summary>
-	public bool IsInBuildPhase => _currentPhase == LevelPhase.Build;
+	public bool IsInBuildPhase => Data.IsInBuildPhase;
 
 	/// <summary>获取是否处于游玩阶段（输入正常）</summary>
-	public bool IsInPlayPhase => _currentPhase == LevelPhase.Play;
+	public bool IsInPlayPhase => Data.IsInPlayPhase;
 
 	/// <summary>获取是否已完成游戏</summary>
-	public bool IsGameCompleted => _isGameCompleted;
+	public bool IsGameCompleted => Data.IsGameCompleted;
 
 	/// <summary>
 	///     静态标志：当前是否处于关卡构建阶段
 	/// </summary>
-	public static bool IsBuildPhaseActive { get; private set; }
+	public static bool IsBuildPhaseActive => LevelControllerData.IsBuildPhaseActive;
 
 	/// <summary>
 	///     静态标志：当前是否处于关卡成功阶段
 	/// </summary>
-	public static bool IsSuccessPhaseActive { get; private set; }
+	public static bool IsSuccessPhaseActive => LevelControllerData.IsSuccessPhaseActive;
 
 	/// <summary>
 	///     重置所有关卡阶段标志
 	/// </summary>
 	public static void ResetPhaseFlags()
 	{
-		IsBuildPhaseActive = false;
-		IsSuccessPhaseActive = false;
+		LevelControllerData.ResetPhaseFlags();
 	}
+
+	#region 配置驱动的行为标志（子类可在构造函数中设置）
+
+	/// <summary>
+	///     是否跳过构建阶段（直接进入游玩阶段）
+	///     <para>
+	///         当设置为true时，OnEnterAsync()会自动调用OnBuildFinished()
+	///         跳过构建界面，直接进入游玩阶段
+	///     </para>
+	///     <remarks>
+	///         使用场景:
+	///         - 教程关卡（TeachLevel）：不需要构建界面
+	///         - 测试关卡：快速进入游戏测试
+	///         - 特殊剧情关卡：固定布局无需构建
+	///         
+	///         默认值: false (正常流程，显示构建界面)
+	///     </remarks>
+	/// </summary>
+	protected bool SkipBuildPhase
+	{
+		get => Data.SkipBuildPhase;
+		set => Data.SkipBuildPhase = value;
+	}
+
+	/// <summary>
+	///     胜利时是否重置GameLevel为None
+	///     <para>
+	///         当设置为true时，OnGameCompleted()会自动将GameLevel设为GameLevel.None
+	///         LevelEndUi的"下一关"按钮会返回到选关界面而非下一关
+	///     </para>
+	///     <remarks>
+	///         使用场景:
+	///         - 教程关卡（TeachLevel）：完成后返回选关界面选第一关
+	///         - 最后一关：没有下一关可选
+	///         
+	///         默认值: false (正常流程，GameLevel保持当前值)
+	///     </remarks>
+	/// </summary>
+	protected bool ResetGameLevelOnVictory
+	{
+		get => Data.ResetGameLevelOnVictory;
+		set => Data.ResetGameLevelOnVictory = value;
+	}
+
+	/// <summary>
+	///     是否启用陷阱系统
+	///     <para>
+	///         当设置为true时，OnEnterAsync()会自动扫描场景中的TrapStatic节点
+	///         并连接TrapTriggered信号到HandleTrapTriggered方法
+	///     </para>
+	///     <remarks>
+	///         使用场景:
+	///         - 教程关卡（TeachLevel）：包含陷阱教学区域
+	///         - 任何需要隐藏/重置玩家机制的关卡
+	///         
+	///         默认值: false (不扫描陷阱节点)
+	///         
+	///         依赖条件:
+	///         - 场景中必须存在 TrapStatic 节点实例
+	///         - TrapStatic 必须正确配置碰撞区域
+	///     </remarks>
+	/// </summary>
+	protected bool EnableTrapSystem
+	{
+		get => Data.EnableTrapSystem;
+		set => Data.EnableTrapSystem = value;
+	}
+
+	#endregion
 
 	#endregion
 
@@ -180,23 +260,35 @@ public partial class BaseLevelController : Node2D, IController, ISceneBehaviorPr
 
 			_playerManager.OnGameCompleteCallback = () =>
 			{
-				_isGameCompleted = true;
+				Data.MarkGameCompleted();
 				_uiManager!.ShowSuccessUi();
 				OnGameCompleted();
 			};
 
-			_log.Info("[BaseLevelController] 步骤6/7: 加载构建界面...");
-			await _uiManager.ShowBuildUiAsync();
+			if (SkipBuildPhase)
+			{
+				_log.Info("[BaseLevelController] 步骤6/9: 跳过构建阶段（SkipBuildPhase=true）...");
+				OnBuildFinished();
+			}
+			else
+			{
+				_log.Info("[BaseLevelController] 步骤6/9: 加载构建界面...");
+				await _uiManager.ShowBuildUiAsync();
+			}
 
-			_log.Info("[BaseLevelController] 步骤7/8: 初始化规则系统...");
+			_log.Info("[BaseLevelController] 步骤7/9: 初始化规则系统...");
 			InitializeRulesIntegration();
 
-			_log.Info("[BaseLevelController] 步骤8/8: 初始化失败区域检测...");
+			_log.Info("[BaseLevelController] 步骤8/9: 初始化失败区域检测...");
 			InitializeDefeatAreaDetection();
 
+			_log.Info("[BaseLevelController] 步骤9/9: 订阅全局陷阱事件...");
+			SubscribeToGlobalTrapEvents();
+
 			_log.Info("════════════ ✅ 场景初始化完成 ═══════════");
-			_log.Info($"[BaseLevelController] 当前阶段: {_currentPhase}");
+			_log.Info($"[BaseLevelController] 当前阶段: {Data.CurrentPhase}");
 			_log.Info($"[BaseLevelController] 玩家状态: {(_playerManager.PlayerInstance != null ? "已生成" : "未生成")}");
+			_log.Info($"[BaseLevelController] 配置状态: SkipBuildPhase={Data.SkipBuildPhase}, ResetGameLevelOnVictory={Data.ResetGameLevelOnVictory}, EnableTrapSystem={Data.EnableTrapSystem}");
 		}
 		catch (Exception ex)
 		{
@@ -275,10 +367,27 @@ public partial class BaseLevelController : Node2D, IController, ISceneBehaviorPr
 
 	/// <summary>
 	///     游戏完成时的自定义逻辑（子类可重写）
+	///     <para>
+	///         当 ResetGameLevelOnVictory=true 时，会自动将 GameLevel 重置为 None
+	///         使 LevelEndUi 的"下一关"按钮返回选关界面
+	///     </para>
 	/// </summary>
 	protected virtual void OnGameCompleted()
 	{
 		_log.Info("[BaseLevelController] 🎉 游戏完成！");
+
+		if (Data.ResetGameLevelOnVictory)
+		{
+			try
+			{
+				LevelChoose.SetCurrentGameLevel(GameLevel.None);
+				_log.Info("[BaseLevelController] ✓ 已重置 GameLevel 为 None（ResetGameLevelOnVictory=true）");
+			}
+			catch (Exception ex)
+			{
+				_log.Error($"[BaseLevelController] ❌ 重置 GameLevel 异常: {ex.Message}");
+			}
+		}
 	}
 
 	/// <summary>
@@ -334,9 +443,9 @@ public partial class BaseLevelController : Node2D, IController, ISceneBehaviorPr
 			if (globalController != null && globalController.GameplayInputService != null)
 			{
 				_globalInputService = globalController.GameplayInputService;
-				
-				_globalInputService.SetCurrentPhase(_currentPhase);
-				
+
+				_globalInputService.SetCurrentPhase(Data.CurrentPhase);
+
 				_log.Info("[BaseLevelController] ✅ 全局输入服务已初始化并同步当前阶段");
 			}
 			else
@@ -355,7 +464,7 @@ public partial class BaseLevelController : Node2D, IController, ISceneBehaviorPr
 	///     <param name="phase">新的关卡阶段</param>
 	///     <remarks>
 	///         此方法为关卡阶段变更的唯一入口，负责:
-	 ///         1. 更新本地 _currentPhase 状态
+	 ///         1. 更新 Data.CurrentPhase 状态
 	 ///         2. 同步到全局输入服务(IGlobalGameplayInputService)
 	 ///         3. 确保全项目输入阻塞行为一致
 	 ///         
@@ -368,13 +477,13 @@ public partial class BaseLevelController : Node2D, IController, ISceneBehaviorPr
 	/// </summary>
 	public void SetCurrentPhase(LevelPhase phase)
 	{
-		if (_currentPhase == phase)
+		if (Data.CurrentPhase == phase)
 		{
 			return;
 		}
 
-		var oldPhase = _currentPhase;
-		_currentPhase = phase;
+		var oldPhase = Data.CurrentPhase;
+		Data.CurrentPhase = phase;
 
 		if (_globalInputService != null)
 		{
@@ -389,13 +498,35 @@ public partial class BaseLevelController : Node2D, IController, ISceneBehaviorPr
 	{
 		_log.Info("[BaseLevelController] 正在初始化重构后的组件...");
 
+		// ⚠️ 重要：必须直接获取节点，不能通过属性（避免循环依赖）
+		Data.BeginPositionNode = GetNodeOrNull<Node2D>("%Begin");
+		Data.EndAreaNode = GetNodeOrNull<Area2D>("%End");
+
+		if (Data.BeginPositionNode != null)
+		{
+			_log.Info($"[BaseLevelController] ✓ Begin 位置节点已设置: {Data.BeginPositionNode.GlobalPosition}");
+		}
+		else
+		{
+			_log.Error("[BaseLevelController] ❌ 未找到 %Begin 节点！玩家重生将使用默认位置(0,0)");
+		}
+
+		if (Data.EndAreaNode != null)
+		{
+			_log.Info($"[BaseLevelController] ✓ End 区域节点已设置: {Data.EndAreaNode.Name}");
+		}
+		else
+		{
+			_log.Warn("[BaseLevelController] ⚠️ 未找到 %End 节点");
+		}
+
 		_uiManager = new LevelUiManagerImpl(
 			_uiRouter,
 			this,
-			() => _currentPhase,
+			() => Data.CurrentPhase,
 			phase => SetCurrentPhase(phase),
-			() => IsBuildPhaseActive,
-			value => IsBuildPhaseActive = value,
+			() => LevelControllerData.IsBuildPhaseActive,
+			value => LevelControllerData.IsBuildPhaseActive = value,
 			msg => _log.Info(msg),
 			msg => _log.Warn(msg),
 			msg => _log.Error(msg),
@@ -404,9 +535,9 @@ public partial class BaseLevelController : Node2D, IController, ISceneBehaviorPr
 
 		_playerManager = new LevelPlayerManagerImpl(
 			this,
-			BeginPosition,
-			EndArea,
-			() => _currentPhase,
+			Data.BeginPositionNode!,
+			Data.EndAreaNode!,
+			() => Data.CurrentPhase,
 			msg => _log.Info(msg),
 			msg => _log.Error(msg),
 			msg => _log.Debug(msg)
@@ -415,21 +546,24 @@ public partial class BaseLevelController : Node2D, IController, ISceneBehaviorPr
 		_inputController = new LevelInputControllerImpl(
 			_stateMachineSystem,
 			this,
-			() => _currentPhase,
+			() => Data.CurrentPhase,
 			msg => _log.Info(msg),
 			msg => _log.Debug(msg)
 		);
 
 		_rulesIntegration = new LevelRulesIntegrationImpl(
-			() => _currentPhase,
+			() => Data.CurrentPhase,
 			phase => SetCurrentPhase(phase),
-			() => IsSuccessPhaseActive,
-			value => IsSuccessPhaseActive = value,
+			() => LevelControllerData.IsSuccessPhaseActive,
+			value => LevelControllerData.IsSuccessPhaseActive = value,
 			msg => _log.Info(msg),
 			msg => _log.Error(msg),
 			msg => _log.Warn(msg),
 			msg => _log.Debug(msg)
 		);
+
+		ResetHandler = new PlayerResetHandler(Data);
+		ResetHandler.OnPlayerRespawnedCallback = OnPlayerRespawned;
 
 		_log.Info("[BaseLevelController] ✓✓✓ 所有组件已成功初始化");
 	}
@@ -470,14 +604,13 @@ public partial class BaseLevelController : Node2D, IController, ISceneBehaviorPr
 
 		_rulesIntegration.Initialize();
 
-		_isGameCompleted = false;
+		Data.ResetGameCompleted();
 	}
 
 	/// <summary>清理阶段标志</summary>
 	private void CleanupPhaseFlags()
 	{
-		IsBuildPhaseActive = false;
-		IsSuccessPhaseActive = false;
+		LevelControllerData.ResetPhaseFlags();
 		_log.Debug("[BaseLevelController] 所有阶段标志已重置");
 	}
 
@@ -486,18 +619,10 @@ public partial class BaseLevelController : Node2D, IController, ISceneBehaviorPr
 	///     <para>
 	///         连接 defeat 区域的 body_entered 信号
 	///         当玩家进入该区域时触发重生逻辑
-	///     </para>
-	///     <remarks>
-	///         调用时机:
-	///         在 OnEnterAsync() 中最后调用，确保玩家已经生成
-	///         
-	///         错误处理:
-	///         - defeat 节点不存在: 记录警告，功能禁用
-	///         - 玩家未生成: 记录错误，延迟到下次检测
-	///         
-	///         性能说明:
-	///         此方法只调用一次，信号连接是 O(1) 操作
-	///     </remarks>
+	 ///         
+	 ///         ⚠️ 重要：使用 CallDeferred 延迟信号连接
+	 ///         避免 "Can't change this state while flushing queries" 错误
+	 ///     </para>
 	/// </summary>
 	private void InitializeDefeatAreaDetection()
 	{
@@ -512,15 +637,83 @@ public partial class BaseLevelController : Node2D, IController, ISceneBehaviorPr
 				return;
 			}
 
-			defeatArea.BodyEntered += OnDefeatAreaBodyEntered;
+			// ⚠️ 使用 CallDeferred 延迟信号连接，避免 Godot 4 "flushing queries" 错误
+			// 原因：在 OnEnterAsync (async) 中直接连接信号会与 Godot 内部状态刷新冲突
+			CallDeferred(MethodName._DeferredConnectDefeatAreaSignal);
 
-			_log.Info($"[BaseLevelController] ✅ 失败区域检测已初始化 (节点: {defeatArea.Name}, 位置: {defeatArea.Position})");
+			_log.Info($"[BaseLevelController] ✅ 失败区域检测初始化已安排 (节点: {defeatArea.Name}, 位置: {defeatArea.Position})");
 			_log.Debug($"[BaseLevelController] Defeat区域碰撞层: {defeatArea.CollisionLayer}, 掩码: {defeatArea.CollisionMask}");
 		}
 		catch (Exception ex)
 		{
 			_log.Error($"[BaseLevelController] ❌ 初始化失败区域检测异常: {ex.Message}");
 			_log.Error($"[BaseLevelController] 异常类型: {ex.GetType().FullName}");
+		}
+	}
+
+	/// <summary>
+	///     延迟连接 DefeatArea 信号（由 CallDeferred 调用）
+	///     <para>
+	///         在下一帧执行，避免 "flushing queries" 错误
+	///     </para>
+	/// </summary>
+	private void _DeferredConnectDefeatAreaSignal()
+	{
+		try
+		{
+			var defeatArea = DefeatArea;
+
+			if (defeatArea == null || !GodotObject.IsInstanceValid(defeatArea) || !GodotObject.IsInstanceValid(this))
+			{
+				_log.Warn("[BaseLevelController] ⚠️ DefeatArea 或 Controller 已失效，跳过信号连接");
+				return;
+			}
+
+			defeatArea.BodyEntered += OnDefeatAreaBodyEntered;
+			_log.Debug("[BaseLevelController] ✓ Defeat区域 BodyEntered 信号已连接（延迟）");
+		}
+		catch (Exception ex)
+		{
+			_log.Error($"[BaseLevelController] ❌ 延迟连接 DefeatArea 信号异常: {ex.Message}");
+		}
+	}
+
+	/// <summary>
+	///     订阅全局陷阱事件
+	///     <para>
+	///         委托给 ResetHandler 处理
+	///     </para>
+	/// </summary>
+	private void SubscribeToGlobalTrapEvents()
+	{
+		try
+		{
+			ResetHandler?.SubscribeToGlobalTrapEvents();
+			_log.Info("[BaseLevelController] ✅ 已成功订阅全局陷阱事件");
+		}
+		catch (Exception ex)
+		{
+			_log.Error($"[BaseLevelController] ❌ 订阅全局陷阱事件异常: {ex.Message}");
+			_log.Error($"[BaseLevelController] 异常类型: {ex.GetType().FullName}");
+		}
+	}
+
+	/// <summary>
+	///     取消订阅全局陷阱事件
+	///     <para>
+	///         委托给 ResetHandler 处理
+	///     </para>
+	/// </summary>
+	private void UnsubscribeFromGlobalTrapEvents()
+	{
+		try
+		{
+			ResetHandler?.UnsubscribeFromGlobalTrapEvents();
+			_log.Info("[BaseLevelController] ✓ 已成功取消订阅全局陷阱事件");
+		}
+		catch (Exception ex)
+		{
+			_log.Error($"[BaseLevelController] ❌ 取消订阅全局陷阱事件异常: {ex.Message}");
 		}
 	}
 
@@ -549,15 +742,15 @@ public partial class BaseLevelController : Node2D, IController, ISceneBehaviorPr
 	{
 		try
 		{
-			if (_isGameCompleted)
+			if (Data.IsGameCompleted)
 			{
 				_log.Debug("[BaseLevelController] 游戏已完成，忽略失败区域触发");
 				return;
 			}
 
-			if (_currentPhase != LevelPhase.Play)
+			if (Data.CurrentPhase != LevelPhase.Play)
 			{
-				_log.Debug($"[BaseLevelController] 当前阶段为 {_currentPhase}，非游玩阶段，忽略失败区域触发");
+				_log.Debug($"[BaseLevelController] 当前阶段为 {Data.CurrentPhase}，非游玩阶段，忽略失败区域触发");
 				return;
 			}
 
@@ -595,9 +788,9 @@ public partial class BaseLevelController : Node2D, IController, ISceneBehaviorPr
 	/// <summary>
 	///     判断节点是否为玩家或玩家的子节点
 	///     <param name="node">待检查的节点</param>
-	/// <param name="playerNode">玩家节点</param>
-	/// <returns>如果是玩家或其子节点返回true，否则false</returns>
-	/// <remarks>
+	///     <param name="playerNode">玩家节点</param>
+	///     <returns>如果是玩家或其子节点返回true，否则false</returns>
+	///     <remarks>
 	///         设计原因:
 	///         玩家可能由多个子节点组成（CharacterBody2D、CollisionShape2D等）
 	///         当任意部分进入 defeat 区域都应该触发重生
@@ -654,7 +847,7 @@ public partial class BaseLevelController : Node2D, IController, ISceneBehaviorPr
 				return;
 			}
 
-			var beginPosition = BeginPosition;
+			var beginPosition = Data.BeginPositionNode;
 			if (beginPosition == null)
 			{
 				_log.Error("[BaseLevelController] ❌ 无法重生玩家：起点 %Begin 节点为空");
@@ -666,26 +859,9 @@ public partial class BaseLevelController : Node2D, IController, ISceneBehaviorPr
 			_log.Info($"[BaseLevelController] 🔄 正在将玩家重置到起点...");
 			_log.Info($"[BaseLevelController] 目标位置: {targetPosition}");
 
-			var characterBody = FindCharacterBodyInPlayer(playerInstance);
-			if (characterBody != null)
-			{
-				characterBody.Velocity = Vector2.Zero;
-				characterBody.GlobalPosition = targetPosition;
+			ResetHandler?.ExecuteFullPlayerReset(playerInstance);
 
-				ResetPlayerPhysicsState(characterBody);
-
-				_log.Info("[BaseLevelController] ✅ 已重置玩家速度、位置和物理状态 (CharacterBody2D)");
-				_log.Debug($"[BaseLevelController] 新位置: {characterBody.GlobalPosition}, 速度: {characterBody.Velocity}");
-			}
-			else
-			{
-				playerInstance.GlobalPosition = targetPosition;
-
-				_log.Info("[BaseLevelController] ✅ 已重置玩家位置 (Node2D)");
-				_log.Debug($"[BaseLevelController] 新位置: {playerInstance.GlobalPosition}");
-			}
-
-			OnPlayerRespawned(playerInstance, targetPosition);
+			_log.Info("[BaseLevelController] ✅ 已完成玩家重置（通过 ResetHandler）");
 		}
 		catch (Exception ex)
 		{
@@ -696,69 +872,10 @@ public partial class BaseLevelController : Node2D, IController, ISceneBehaviorPr
 	}
 
 	/// <summary>
-	///     重置玩家物理运动状态
-	///     <para>
-	///         清空PlayerPhysicsMovement内部累积的速度向量和其他物理参数
-	///         防止玩家在下落过程中出现速度持续累积导致的异常加速问题
-	///     </para>
-	///     <param name="characterBody">玩家的CharacterBody2D节点</param>
-	///     <remarks>
-	///         重置内容:
-	///         1. 调用 PlayerPhysicsMovement.StopImmediately() 清空内部速度向量(_velocity)
-	///         2. 确保 CharacterBody2D.Velocity 已归零（双重保险）
-	///         
-	///         调用时机:
-	///         - 玩家进入失败区域需要重生时
-	///         - 陷阱触发后恢复玩家时
-	///         - 任何需要完全重置玩家物理状态的场景
-	///         
-	///         设计原理:
-	///         PlayerPhysicsMovement维护内部的_velocity字段用于物理计算
-	///         如果只重置 CharacterBody2D.Velocity 而不重置 _velocity，
-	///         下一帧物理更新时 _physicsMovement 会重新将累积的速度赋给 body
-	///         导致"速度重置无效"的假象
-	///     </remarks>
-	/// </summary>
-	private void ResetPlayerPhysicsState(CharacterBody2D characterBody)
-	{
-		try
-		{
-			var movementCtrl = characterBody.GetNodeOrNull<PlayerMovementController>("PlayerMovementController") ??
-							   characterBody.GetNodeOrNull<PlayerMovementController>("CharacterBody2D");
-
-			if (movementCtrl != null)
-			{
-				var physicsMovement = movementCtrl.PhysicsMovement;
-				if (physicsMovement != null)
-				{
-					physicsMovement.StopImmediately();
-					_log.Debug("[BaseLevelController] ✓ PlayerPhysicsMovement内部速度已清空");
-				}
-				else
-				{
-					_log.Warn("[BaseLevelController] ⚠️ 无法获取PlayerPhysicsMovement实例");
-				}
-			}
-			else
-			{
-				_log.Warn("[BaseLevelController] ⚠️ 无法获取PlayerMovementController实例，跳过物理模块重置");
-			}
-
-			characterBody.Velocity = Vector2.Zero;
-		}
-		catch (Exception ex)
-		{
-			_log.Error($"[BaseLevelController] ❌ 重置玩家物理状态异常: {ex.Message}");
-			_log.Debug($"[BaseLevelController] 将使用基础重置方案(仅清零Velocity)");
-			characterBody.Velocity = Vector2.Zero;
-		}
-	}
-
-	/// <summary>
 	///     玩家重生完成后的回调（可被子类重写）
 	///     <param name="player">玩家实例</param>
-	/// <param name="respawnPosition">重生位置</param>
-	/// <remarks>
+	///     <param name="respawnPosition">重生位置</param>
+	///     <remarks>
 	///         用途:
 	///         - 子类可重写此方法添加额外逻辑
 	///         - 例如：播放音效、显示特效、更新UI等
@@ -779,7 +896,7 @@ public partial class BaseLevelController : Node2D, IController, ISceneBehaviorPr
 	/// <summary>
 	///     处理陷阱触发事件（由 TrapStatic 信号调用）
 	///     <param name="playerNode">被陷阱隐藏的玩家节点</param>
-	/// <remarks>
+	///     <remarks>
 	///         功能说明:
 	///         1. 恢复玩家可见性（Visible = true）
 	///         2. 重置玩家到起点位置 (%Begin)
@@ -801,17 +918,16 @@ public partial class BaseLevelController : Node2D, IController, ISceneBehaviorPr
 	{
 		try
 		{
-			if (_isGameCompleted)
+			if (Data.IsGameCompleted)
 			{
 				_log.Debug("[BaseLevelController] 游戏已完成，忽略陷阱触发");
 				return;
 			}
 
 			_log.Info("══════════ 处理陷阱触发 ═════════");
-			
-			RestorePlayerVisibility(playerNode);
-			RespawnPlayerToStart();
-			
+
+			ResetHandler?.ExecuteFullPlayerReset(playerNode);
+
 			_log.Info("══════════ 陷阱处理完成 ═════════");
 		}
 		catch (Exception ex)
@@ -821,58 +937,12 @@ public partial class BaseLevelController : Node2D, IController, ISceneBehaviorPr
 		}
 	}
 
-	/// <summary>
-	///     恢复玩家可见性
-	///     <param name="playerNode">要恢复的玩家节点</param>
-	/// </summary>
-	private void RestorePlayerVisibility(Node playerNode)
-	{
-		try
-		{
-			_log.Info("[BaseLevelController] 👁️ 正在恢复玩家可见性...");
-			
-			var canvasItem = playerNode as CanvasItem;
-			if (canvasItem != null)
-			{
-				canvasItem.Visible = true;
-			}
-			else
-			{
-				playerNode.ProcessMode = Node.ProcessModeEnum.Inherit;
-				_log.Debug("[BaseLevelController] 玩家是非CanvasItem节点，已恢复处理模式");
-			}
-			
-			var characterBody = FindCharacterBodyInPlayer(playerNode);
-			if (characterBody != null)
-			{
-				characterBody.Visible = true;
-				
-				var collisionShape = characterBody.GetNodeOrNull<CollisionShape2D>("CollisionShape2D");
-				if (collisionShape != null)
-				{
-					collisionShape.Disabled = false;
-					_log.Debug("[BaseLevelController] ✓ 碰撞形状已重新启用");
-				}
-				
-				_log.Info("[BaseLevelController] ✓ 玩家及 CharacterBody2D 已恢复可见");
-			}
-			else
-			{
-				_log.Info("[BaseLevelController] ✓ 玩家已恢复可见（未找到 CharacterBody2D）");
-			}
-		}
-		catch (Exception ex)
-		{
-			_log.Error($"[BaseLevelController] ❌ 恢复玩家可见性异常: {ex.Message}");
-		}
-	}
-
 	/// <summary>查找玩家节点中的 CharacterBody2D</summary>
 	private static CharacterBody2D? FindCharacterBodyInPlayer(Node playerNode)
 	{
 		if (playerNode is CharacterBody2D body) return body;
-		
-		return playerNode.GetNodeOrNull<CharacterBody2D>("CharacterBody2D") ?? 
+
+		return playerNode.GetNodeOrNull<CharacterBody2D>("CharacterBody2D") ??
 			   playerNode.GetNodeOrNull<CharacterBody2D>("character_body_2d");
 	}
 

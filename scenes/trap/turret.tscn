@@ -1,0 +1,35 @@
+[gd_scene format=3 uid="uid://b68to22npgjlb"]
+
+[ext_resource type="Script" uid="uid://bpk8fj8thvdyi" path="res://scripts/trap/TurretController.cs" id="1_4quwh"]
+[ext_resource type="PackedScene" uid="uid://wh6tw4neb3et" path="res://scenes/trap/bullet.tscn" id="1_elqe7"]
+[ext_resource type="PackedScene" uid="uid://c1lwahk41awbt" path="res://scenes/trap/Trap_static.tscn" id="2_fdlbb"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_fdlbb"]
+size = Vector2(74, 20)
+
+[node name="Turret" type="Node2D" unique_id=1873261723]
+position = Vector2(501, 277)
+script = ExtResource("1_4quwh")
+
+[node name="ColorRect" type="ColorRect" parent="." unique_id=44215812]
+offset_left = -10.0
+offset_top = -10.0
+offset_right = 10.0
+offset_bottom = 10.0
+
+[node name="Bullet" parent="." unique_id=1438942146 instance=ExtResource("1_elqe7")]
+
+[node name="TrapStatic" parent="." unique_id=256416211 instance=ExtResource("2_fdlbb")]
+
+[node name="Detect" type="Area2D" parent="." unique_id=1068732932]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Detect" unique_id=644816271]
+position = Vector2(-27, 0)
+shape = SubResource("RectangleShape2D_fdlbb")
+
+[node name="ColorRect2" type="ColorRect" parent="Detect/CollisionShape2D" unique_id=896918668]
+offset_left = -37.0
+offset_top = -10.0
+offset_right = 37.0
+offset_bottom = 10.0
+color = Color(1, 1, 1, 0.32156864)

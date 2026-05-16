@@ -261,12 +261,18 @@ public class PlayerPhysicsMovement : IPlayerPhysicsMovement, IPlayerDataListener
 	///     执行流程:
 	///     1. 将内部速度向量赋值给body.Velocity
 	///     2. 调用body.MoveAndSlide()执行移动和碰撞
-	///     3. 更新_isOnFloor状态(基于碰撞结果)
+	///     3. 将MoveAndSlide()修改后的速度同步回内部_velocity（重要！）
+	///     4. 更新_isOnFloor状态(基于碰撞结果)
 	///     
 	///     MoveAndSlide特性:
 	///     - 自动处理滑动碰撞(沿墙壁滑动)
 	///     - 自动处理斜坡运动
-	///     - 更新body的IsOnFloor(), IsOnWall(), IsOnCeiling()等状态
+	///     - **会修改body.Velocity** (碰撞响应、地板修正等)
+	///     
+	///     为什么需要步骤3:
+	///     MoveAndSlide()会根据物理碰撞修改速度(例如:撞到地板时将Y速度归零)
+	///     如果不同步回来，内部_velocity和实际速度会产生偏差
+	///     导致重置时无法正确清除所有残留速度
 	///     
 	///     注意事项:
 	///     - 必须传入有效的CharacterBody2D实例
@@ -278,28 +284,34 @@ public class PlayerPhysicsMovement : IPlayerPhysicsMovement, IPlayerDataListener
 		body.Velocity = _velocity;
 		body.MoveAndSlide();
 
+		_velocity = body.Velocity;
 		_isOnFloor = body.IsOnFloor();
 	}
 
 	/// <inheritdoc />
 	/// <remarks>
 	///     实现方式:
-	///     直接将速度向量设置为Vector2.Zero
+	///     1. 将速度向量设置为Vector2.Zero（清除累积速度）
+	///     2. 重置地面检测状态为true（模拟刚放置在地面上）
+	///     
 	///     不使用减速过程，而是瞬间停止
 	///     
 	///     后续影响:
-	///     下次Move()时会保持静止状态
-	///     直到收到新的输入指令
+	///     - 下次Move()时会保持静止状态
+	///     - ApplyGravity()不会立即应用重力（因为IsOnFloor=true）
+	///     - 直到收到新的输入指令或离开地面
 	///     
 	///     使用场景:
 	///     - 游戏暂停时停止角色移动
 	///     - 输入禁用时(非PlayingState)
 	///     - 场景切换时清除速度状态
 	///     - 死亡或受击时立即停止
+	///     - 玩家重生/重置到起点时完全清除物理状态
 	/// </remarks>
 	public void StopImmediately()
 	{
 		_velocity = Vector2.Zero;
+		_isOnFloor = true;
 	}
 
 	#endregion

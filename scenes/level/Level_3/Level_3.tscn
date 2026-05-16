@@ -4,22 +4,14 @@
 [ext_resource type="PackedScene" uid="uid://xvap61y33u7g" path="res://scenes/platform/prohibit.tscn" id="2_3q88r"]
 [ext_resource type="PackedScene" uid="uid://dl36yxcgi18ce" path="res://scenes/platform/plate_Default.tscn" id="3_rb5dk"]
 [ext_resource type="PackedScene" uid="uid://1rmioom8ydcq" path="res://scenes/platform/wall.tscn" id="4_xrcia"]
+[ext_resource type="Script" uid="uid://dkraaoqxtaxj8" path="res://scripts/world/AutoOscillatePlatform.cs" id="5_ire50"]
 [ext_resource type="PackedScene" uid="uid://cjrsch8kq6j1d" path="res://scenes/platform/platform_move.tscn" id="5_k8unf"]
+[ext_resource type="PackedScene" uid="uid://wh6tw4neb3et" path="res://scenes/trap/bullet.tscn" id="6_al7y5"]
+[ext_resource type="PackedScene" uid="uid://c1lwahk41awbt" path="res://scenes/trap/Trap_static.tscn" id="6_xrcia"]
+[ext_resource type="PackedScene" uid="uid://buvbhb4dknf7e" path="res://scenes/platform/Ladder.tscn" id="7_k8unf"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_3q88r"]
 size = Vector2(27.375, 45.75)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_al7y5"]
-size = Vector2(979, 139)
-
-[sub_resource type="CircleShape2D" id="CircleShape2D_rb5dk"]
-
-[sub_resource type="CircleShape2D" id="CircleShape2D_xrcia"]
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_rb5dk"]
-size = Vector2(17, 294)
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_xrcia"]
 
 [node name="Level3" type="Node2D" unique_id=1381650402]
 script = ExtResource("1_ixbw4")
@@ -37,28 +29,9 @@ shape = SubResource("RectangleShape2D_3q88r")
 
 [node name="Begin" type="Node2D" parent="." unique_id=1746972634]
 unique_name_in_owner = true
-position = Vector2(55, 102)
+position = Vector2(55, 79)
 
 [node name="Prohibit" parent="." unique_id=1309119243 instance=ExtResource("2_3q88r")]
-
-[node name="defeat" type="Area2D" parent="." unique_id=1833665522]
-unique_name_in_owner = true
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="defeat" unique_id=126865309]
-position = Vector2(484.5, 640.5)
-shape = SubResource("RectangleShape2D_al7y5")
-
-[node name="CollisionShape2D2" type="CollisionShape2D" parent="defeat" unique_id=1453733938]
-position = Vector2(296, 276)
-scale = Vector2(1.2275872, 1.4677962)
-shape = SubResource("CircleShape2D_rb5dk")
-debug_color = Color(0.7302664, 0, 0.105640076, 0.41960785)
-
-[node name="CollisionShape2D3" type="CollisionShape2D" parent="defeat" unique_id=698857051]
-position = Vector2(463, 260.99997)
-scale = Vector2(1.3718336, 0.97676456)
-shape = SubResource("CircleShape2D_xrcia")
-debug_color = Color(0.7302664, 0, 0.105640076, 0.41960785)
 
 [node name="Ground" type="Node2D" parent="." unique_id=1191515474]
 
@@ -73,55 +46,26 @@ position = Vector2(259, 289)
 scale = Vector2(1.2979316, 0.6713673)
 
 [node name="move" type="Node2D" parent="Ground" unique_id=822484276]
-position = Vector2(187, 521)
+position = Vector2(178, 503)
+script = ExtResource("5_ire50")
+
+[node name="A" type="Node2D" parent="Ground/move" unique_id=789554922]
+position = Vector2(-100, 0)
+
+[node name="B" type="Node2D" parent="Ground/move" unique_id=378465794]
+position = Vector2(520, 0)
+
+[node name="ColorRect" type="ColorRect" parent="Ground/move" unique_id=1218293340]
+offset_left = -114.0
+offset_top = -9.0
+offset_right = -74.0
+offset_bottom = 31.0
+scale = Vector2(16.66364, 0.49890834)
+color = Color(0, 0, 0, 0.44705883)
 
 [node name="PlatformMove" parent="Ground/move" unique_id=1232398423 instance=ExtResource("5_k8unf")]
 position = Vector2(520, 0)
-scale = Vector2(6.84, 0.64)
-
-[node name="left" type="Node2D" parent="Ground/move" unique_id=789554922]
-unique_name_in_owner = true
-position = Vector2(-100, 3)
-
-[node name="right" type="Node2D" parent="Ground/move" unique_id=378465794]
-unique_name_in_owner = true
-position = Vector2(520, 3)
-
-[node name="latter" type="Node2D" parent="Ground" unique_id=1070387622]
-position = Vector2(843, 169)
-
-[node name="Area2D" type="Area2D" parent="Ground/latter" unique_id=1724964101]
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Ground/latter/Area2D" unique_id=8127702]
-position = Vector2(15.5, 112)
-shape = SubResource("RectangleShape2D_rb5dk")
-
-[node name="ColorRect" type="ColorRect" parent="Ground/latter/Area2D" unique_id=401143238]
-offset_left = 7.0
-offset_top = -35.0
-offset_right = 24.0
-offset_bottom = 259.0
-color = Color(0.5572767, 0.23334351, 0.8076086, 1)
-
-[node name="shout" type="Node2D" parent="Ground" unique_id=97008624]
-
-[node name="AttractBegin" type="Node2D" parent="Ground/shout" unique_id=2089259235]
-unique_name_in_owner = true
-
-[node name="AttractEnd" type="Node2D" parent="Ground/shout" unique_id=273951087]
-unique_name_in_owner = true
-
-[node name="bullet" type="Area2D" parent="Ground/shout" unique_id=1971492498]
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Ground/shout/bullet" unique_id=1160436168]
-position = Vector2(857, -112)
-shape = SubResource("RectangleShape2D_xrcia")
-
-[node name="ColorRect" type="ColorRect" parent="Ground/shout/bullet" unique_id=1047444676]
-offset_left = 852.0
-offset_top = -115.0
-offset_right = 892.0
-offset_bottom = -75.0
+scale = Vector2(8.057346, 1.5208079)
 
 [node name="Wall2" parent="Ground" unique_id=1308964301 instance=ExtResource("4_xrcia")]
 position = Vector2(629, 287)
@@ -130,3 +74,68 @@ scale = Vector2(1.2979316, 0.6713673)
 [node name="Wall3" parent="Ground" unique_id=2009859214 instance=ExtResource("4_xrcia")]
 position = Vector2(443, 289)
 scale = Vector2(1.2979316, 0.6713673)
+
+[node name="gear" type="Node2D" parent="Ground" unique_id=1342531505]
+position = Vector2(242, 151)
+script = ExtResource("5_ire50")
+
+[node name="A" type="Node2D" parent="Ground/gear" unique_id=260132994]
+position = Vector2(0, 3)
+
+[node name="B" type="Node2D" parent="Ground/gear" unique_id=323817666]
+position = Vector2(0, 280)
+
+[node name="PlatformMove" type="Node2D" parent="Ground/gear" unique_id=1138549772]
+
+[node name="TrapStatic" parent="Ground/gear/PlatformMove" unique_id=256416211 instance=ExtResource("6_xrcia")]
+scale = Vector2(2.587, 3)
+
+[node name="gear2" type="Node2D" parent="Ground" unique_id=1589416723]
+position = Vector2(426, 151)
+script = ExtResource("5_ire50")
+
+[node name="B" type="Node2D" parent="Ground/gear2" unique_id=255949953]
+position = Vector2(0, 3)
+
+[node name="A" type="Node2D" parent="Ground/gear2" unique_id=389103458]
+position = Vector2(0, 281)
+
+[node name="PlatformMove" type="Node2D" parent="Ground/gear2" unique_id=1980959616]
+position = Vector2(0, 281)
+
+[node name="TrapStatic" parent="Ground/gear2/PlatformMove" unique_id=1202190137 instance=ExtResource("6_xrcia")]
+scale = Vector2(3, 3)
+
+[node name="gear3" type="Node2D" parent="Ground" unique_id=1453442756]
+position = Vector2(612, 150)
+script = ExtResource("5_ire50")
+
+[node name="A" type="Node2D" parent="Ground/gear3" unique_id=798395482]
+
+[node name="B" type="Node2D" parent="Ground/gear3" unique_id=550804517]
+position = Vector2(0, 280)
+
+[node name="PlatformMove" type="Node2D" parent="Ground/gear3" unique_id=1983196404]
+
+[node name="TrapStatic" parent="Ground/gear3/PlatformMove" unique_id=1702056387 instance=ExtResource("6_xrcia")]
+scale = Vector2(3, 3)
+
+[node name="Ladder" parent="Ground" unique_id=1574291903 instance=ExtResource("7_k8unf")]
+position = Vector2(858, 276)
+
+[node name="shout" type="Node2D" parent="Ground" unique_id=97008624]
+position = Vector2(858, 276)
+
+[node name="A" type="Node2D" parent="Ground/shout" unique_id=2089259235]
+position = Vector2(0, -300)
+
+[node name="B" type="Node2D" parent="Ground/shout" unique_id=273951087]
+position = Vector2(0, 300)
+
+[node name="Bullet" parent="Ground/shout" unique_id=1438942146 instance=ExtResource("6_al7y5")]
+unique_name_in_owner = true
+position = Vector2(0, -299)
+
+[node name="TrapStatic" parent="." unique_id=878280355 instance=ExtResource("6_xrcia")]
+position = Vector2(478, 666)
+scale = Vector2(48.44806, 7.8799987)

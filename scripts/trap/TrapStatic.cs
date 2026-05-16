@@ -3,28 +3,34 @@ using Godot;
 namespace GFrameworkGodotTemplate.scripts.trap;
 
 /// <summary>
-///     静态陷阱控制器
+///     静态陷阱控制器（v2.0 - 全局静态事件版）
 ///     <para>
 ///         当玩家进入陷阱碰撞区域时，立即隐藏玩家角色
-///         通过信号通知外部处理器执行后续的重生逻辑
+///         通过全局静态事件通知外部处理器执行后续的重生逻辑
 ///         
-///         设计原理:
+///         设计原理（v2.0 更新）:
 ///         - 遵循单一职责原则(SRP)：仅负责检测和隐藏
-///         - 重生逻辑由 BaseLevelController 统一管理
-///         - 通过松耦合信号机制实现通信
+///         - 重生逻辑由 BaseLevelController 通过静态事件统一管理
+///         - 使用全局静态事件而非实例信号，避免递归遍历
 ///     </para>
 ///     
 ///     <author>AI Assistant</author>
-///     <version>1.0.0</version>
-///     <date>2026-05-15</date>
+///     <version>2.0.0</version>
+///     <date>2026-05-16</date>
 ///     
 ///     <description>
 ///         功能特性:
 ///         - Area2D 碰撞检测玩家进入
 ///         - 立即隐藏玩家节点 (Visible = false)
-///         - 发送 TrapTriggered 信号通知处理器
+///         - 调用全局静态事件 TrapEventManager.TriggerPlayerReset()
 ///         - 支持配置是否自动重置玩家
 ///         - 完整的日志记录和错误处理
+///         
+///         v2.0 变更（遵循规范）:
+///         - ✅ 移除实例信号 (TrapTriggered, PlayerResetReady)
+///         - ✅ 改用全局静态事件 TrapEventManager.PlayerResetRequired
+///         - ✅ 简化架构：无需递归遍历连接信号
+///         - ✅ 统一入口：所有陷阱共享同一静态事件源
 ///         
 ///         使用场景:
 ///         - 教程关卡 (Teach_Level.tscn) 的陷阱区域
@@ -39,15 +45,6 @@ namespace GFrameworkGodotTemplate.scripts.trap;
 [Log]
 public partial class TrapStatic : Node2D
 {
-	#region 信号定义
-
-	/// <summary>陷阱触发信号 - 当玩家进入陷阱区域时发送</summary>
-	/// <param name="playerNode">进入陷阱的玩家节点</param>
-	[Signal]
-	public delegate void TrapTriggeredEventHandler(Node playerNode);
-
-	#endregion
-
 	#region 私有字段
 
 	/// <summary>陷阱碰撞区域</summary>
@@ -74,6 +71,7 @@ public partial class TrapStatic : Node2D
 		InitializeTrapArea();
 		
 		_log.Info("[TrapStatic] ══════════ 陷阱初始化完成 ══════════");
+		_log.Info($"[TrapStatic] 版本: v2.0 (全局静态事件模式)");
 		_log.Info($"[TrapStatic] 自动重置: {AutoReset}, 重置延迟: {ResetDelaySeconds}秒");
 	}
 
@@ -126,7 +124,16 @@ public partial class TrapStatic : Node2D
 	/// <summary>
 	///     当物体进入陷阱碰撞区域时的回调
 	///     <param name="body">进入区域的物理实体</param>
-	/// </summary>
+	///     
+	///     触发流程（符合规范）:
+	 ///     1. 检查是否为玩家
+	 ///     2. 执行 HidePlayer() 隐藏玩家
+	 ///     3. 调用全局静态事件 TriggerPlayerReset()
+	 ///        → 自动执行所有已注册的回调函数:
+	 ///          a) 玩家位置恢复函数（→begin位置）
+	 ///          b) 玩家模型显示恢复函数
+	 ///          c) 玩家可视状态恢复函数
+	 /// </summary>
 	private void OnBodyEntered(Node body)
 	{
 		try
@@ -155,9 +162,13 @@ public partial class TrapStatic : Node2D
 			}
 
 			HidePlayer(body);
-			EmitSignal(SignalName.TrapTriggered, body);
 			
-			_log.Info("[TrapStatic] ✓ 陷阱触发完成，已发送通知信号");
+			_log.Info("[TrapStatic] ✓ 玩家已隐藏，现在调用全局静态事件...");
+			
+			// 调用全局静态事件（统一入口）
+			TrapEventManager.TriggerPlayerReset(body, "TrapStatic");
+
+			_log.Info("[TrapStatic] ✓ 陷阱触发完成，全局事件已发送");
 
 			if (AutoReset)
 			{
@@ -234,7 +245,7 @@ public partial class TrapStatic : Node2D
 	#region 公开API
 
 	/// <summary>
-	///     手动显示玩家（由 BaseLevelController 调用）
+	///     手动显示玩家（保留向后兼容性，但推荐使用静态事件机制）
 	///     <param name="playerNode">要显示的玩家节点</param>
 	/// </summary>
 	public void ShowPlayer(Node playerNode)
@@ -288,9 +299,9 @@ public partial class TrapStatic : Node2D
 		if (body == null) return false;
 		
 		return body.Name == "Player" || 
-		       body.Name == "player" || 
-		       body.GetParent()?.Name == "Player" ||
-		       body.GetParent()?.Name == "player";
+			   body.Name == "player" || 
+			   body.GetParent()?.Name == "Player" ||
+			   body.GetParent()?.Name == "player";
 	}
 
 	/// <summary>查找 CharacterBody2D 子节点</summary>
@@ -299,7 +310,7 @@ public partial class TrapStatic : Node2D
 		if (node is CharacterBody2D body) return body;
 		
 		return node.GetNodeOrNull<CharacterBody2D>("CharacterBody2D") ?? 
-		       node.GetNodeOrNull<CharacterBody2D>("character_body_2d");
+			   node.GetNodeOrNull<CharacterBody2D>("character_body_2d");
 	}
 
 	#endregion

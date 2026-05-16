@@ -2,6 +2,8 @@
 
 [ext_resource type="Script" uid="uid://fxx0uycph8gj" path="res://scripts/level/BaseLevelController.cs" id="1_nbt8x"]
 [ext_resource type="Material" uid="uid://dsuylvexqgefv" path="res://resource/shader/bass_red.tres" id="2_nbt8x"]
+[ext_resource type="PackedScene" uid="uid://bekvxk16ymoeq" path="res://scenes/platform/glass.tscn" id="3_lqvvs"]
+[ext_resource type="PackedScene" uid="uid://b68to22npgjlb" path="res://scenes/trap/turret.tscn" id="4_uyrkt"]
 
 [sub_resource type="CanvasTexture" id="CanvasTexture_lqvvs"]
 
@@ -62,3 +64,9 @@ text = "text"
 [node name="Begin" type="Node2D" parent="." unique_id=1731048949]
 unique_name_in_owner = true
 position = Vector2(130, 331)
+
+[node name="Glass" parent="." unique_id=247560035 instance=ExtResource("3_lqvvs")]
+position = Vector2(254, 395)
+
+[node name="Turret" parent="." unique_id=1873261723 instance=ExtResource("4_uyrkt")]
+position = Vector2(461, 383)

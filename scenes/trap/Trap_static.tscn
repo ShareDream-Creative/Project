@@ -12,3 +12,10 @@ script = ExtResource("1_gw84a")
 [node name="CollisionShape2D" type="CollisionShape2D" parent="Area2D" unique_id=1357713130]
 shape = SubResource("RectangleShape2D_ipdaw")
 debug_color = Color(0.73333335, 0.0627451, 0.15686275, 0.41960785)
+
+[node name="ColorRect" type="ColorRect" parent="Area2D" unique_id=136189153]
+offset_left = -10.0
+offset_top = -10.0
+offset_right = 10.0
+offset_bottom = 10.0
+color = Color(0.8862745, 0, 0.24313726, 0.2627451)

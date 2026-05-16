@@ -1,5 +1,7 @@
 [gd_scene format=3 uid="uid://bekvxk16ymoeq"]
 
+[ext_resource type="Script" uid="uid://bya66fyxdiy5l" path="res://scripts/world/FragileGlass.cs" id="1_8gq6w"]
+
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_7u0q2"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_8gq6w"]
@@ -7,6 +9,7 @@ size = Vector2(20, 25)
 
 [node name="Glass" type="Node2D" unique_id=247560035]
 scale = Vector2(2, 2)
+script = ExtResource("1_8gq6w")
 
 [node name="StaticBody2D" type="StaticBody2D" parent="." unique_id=1078028703]
 

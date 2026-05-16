@@ -2,14 +2,14 @@
 
 [ext_resource type="Script" uid="uid://fxx0uycph8gj" path="res://scripts/level/BaseLevelController.cs" id="1_2caii"]
 [ext_resource type="PackedScene" uid="uid://xvap61y33u7g" path="res://scenes/platform/prohibit.tscn" id="2_xnq8f"]
+[ext_resource type="PackedScene" uid="uid://dl36yxcgi18ce" path="res://scenes/platform/plate_Default.tscn" id="3_7xuoj"]
+[ext_resource type="PackedScene" uid="uid://buvbhb4dknf7e" path="res://scenes/platform/Ladder.tscn" id="4_63a73"]
+[ext_resource type="PackedScene" uid="uid://bekvxk16ymoeq" path="res://scenes/platform/glass.tscn" id="5_m3ko2"]
+[ext_resource type="PackedScene" uid="uid://b68to22npgjlb" path="res://scenes/trap/turret.tscn" id="6_8g4gi"]
+[ext_resource type="Script" uid="uid://dkraaoqxtaxj8" path="res://scripts/world/AutoOscillatePlatform.cs" id="7_evhwu"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_lorwu"]
-size = Vector2(91, 80)
-
-[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_2caii"]
-
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_xnq8f"]
-size = Vector2(930, 94)
+size = Vector2(23.5, 25)
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_7xuoj"]
 size = Vector2(979, 139)
@@ -20,50 +20,16 @@ script = ExtResource("1_2caii")
 [node name="Sprite2D" type="Sprite2D" parent="." unique_id=475259778]
 position = Vector2(461, 190)
 
-[node name="TextEdit" type="TextEdit" parent="Sprite2D" unique_id=1615813308]
-custom_minimum_size = Vector2(100, 100)
-anchors_preset = 8
-anchor_left = 0.5
-anchor_top = 0.5
-anchor_right = 0.5
-anchor_bottom = 0.5
-offset_left = -20.5
-offset_top = -125.5
-offset_right = 134.5
-offset_bottom = 143.5
-grow_horizontal = 2
-grow_vertical = 2
-size_flags_horizontal = 3
-size_flags_vertical = 3
-theme_override_font_sizes/font_size = 200
-text = "5"
-
 [node name="End" type="Area2D" parent="." unique_id=665788874]
 unique_name_in_owner = true
-position = Vector2(878, 388)
+position = Vector2(930, 285)
 
 [node name="collion" type="CollisionShape2D" parent="End" unique_id=480250581]
-position = Vector2(-35.5, -30)
 shape = SubResource("RectangleShape2D_lorwu")
 
 [node name="Begin" type="Node2D" parent="." unique_id=327632811]
 unique_name_in_owner = true
-position = Vector2(143, 343)
-
-[node name="StaticBody2D" type="StaticBody2D" parent="." unique_id=1230333019]
-position = Vector2(82, 436)
-physics_material_override = SubResource("PhysicsMaterial_2caii")
-
-[node name="CollisionShape2D" type="CollisionShape2D" parent="StaticBody2D" unique_id=634892538]
-position = Vector2(389, 39)
-shape = SubResource("RectangleShape2D_xnq8f")
-
-[node name="ColorRect" type="ColorRect" parent="StaticBody2D" unique_id=1694261298]
-offset_left = -75.0
-offset_top = -7.0
-offset_right = 852.0
-offset_bottom = 86.0
-metadata/_edit_use_anchors_ = true
+position = Vector2(51, 256)
 
 [node name="Prohibit" parent="." unique_id=1309119243 instance=ExtResource("2_xnq8f")]
 
@@ -73,3 +39,50 @@ unique_name_in_owner = true
 [node name="CollisionShape2D" type="CollisionShape2D" parent="defeat" unique_id=1301178006]
 position = Vector2(484.5, 640.5)
 shape = SubResource("RectangleShape2D_7xuoj")
+
+[node name="ground" type="Node2D" parent="." unique_id=1524677177]
+
+[node name="PlateDefault" parent="ground" unique_id=1250926864 instance=ExtResource("3_7xuoj")]
+position = Vector2(49, 311)
+
+[node name="PlateDefault2" parent="ground" unique_id=1251279607 instance=ExtResource("3_7xuoj")]
+position = Vector2(922, 311)
+
+[node name="Ladder" parent="ground" unique_id=1574291903 instance=ExtResource("4_63a73")]
+position = Vector2(485, 146)
+
+[node name="PlateDefault3" parent="ground" unique_id=1563682653 instance=ExtResource("3_7xuoj")]
+position = Vector2(290, 471)
+scale = Vector2(4.4000015, 1)
+
+[node name="Glass" parent="ground" unique_id=247560035 instance=ExtResource("5_m3ko2")]
+position = Vector2(669, 469)
+scale = Vector2(18.760002, 1.2800006)
+
+[node name="Turret" parent="ground" unique_id=1873261723 instance=ExtResource("6_8g4gi")]
+position = Vector2(766, 426)
+scale = Vector2(1, 2.5200005)
+DetectLength = 501.0
+
+[node name="moveturret" type="Node2D" parent="ground" unique_id=1280092004]
+position = Vector2(766, 39)
+script = ExtResource("7_evhwu")
+
+[node name="A" type="Node2D" parent="ground/moveturret" unique_id=1565597717]
+
+[node name="B" type="Node2D" parent="ground/moveturret" unique_id=9922736]
+position = Vector2(0, 218)
+
+[node name="ColorRect" type="ColorRect" parent="ground/moveturret" unique_id=223560138]
+offset_left = -10.0
+offset_top = -18.0
+offset_right = 30.0
+offset_bottom = 22.0
+scale = Vector2(0.45656106, 6.319999)
+color = Color(0, 0, 0, 0.48235294)
+
+[node name="PlatformMove" type="Node2D" parent="ground/moveturret" unique_id=871382743]
+
+[node name="Turret2" parent="ground/moveturret/PlatformMove" unique_id=1051090004 instance=ExtResource("6_8g4gi")]
+position = Vector2(0, 0)
+scale = Vector2(4.839998, 3.0400004)

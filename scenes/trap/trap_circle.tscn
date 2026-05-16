@@ -1,0 +1,22 @@
+[gd_scene format=3 uid="uid://cq643hdd0a5ys"]
+
+[ext_resource type="Script" uid="uid://csmw2bjw7kqop" path="res://scripts/trap/TrapStatic.cs" id="1_a52qb"]
+
+[sub_resource type="CircleShape2D" id="CircleShape2D_30ce8"]
+
+[node name="TrapCircle" type="Node2D" unique_id=1233705572]
+script = ExtResource("1_a52qb")
+
+[node name="Area2D" type="Area2D" parent="." unique_id=189502986]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="Area2D" unique_id=1222243462]
+shape = SubResource("CircleShape2D_30ce8")
+debug_color = Color(0.73333335, 0.0627451, 0.15686275, 0.41960785)
+
+[node name="ColorRect" type="ColorRect" parent="Area2D/CollisionShape2D" unique_id=2132561322]
+offset_left = -10.0
+offset_top = -10.0
+offset_right = 10.0
+offset_bottom = 10.0
+color = Color(0.8862745, 0, 0.24313726, 0.2627451)
+metadata/_edit_use_anchors_ = true

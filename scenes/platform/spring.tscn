@@ -1,0 +1,17 @@
+[gd_scene format=3 uid="uid://cy3r81gkoi84j"]
+
+[sub_resource type="RectangleShape2D" id="RectangleShape2D_jlwj5"]
+
+[node name="Spring" type="Node2D" unique_id=558498023]
+
+[node name="RigidBody2D" type="RigidBody2D" parent="." unique_id=49400126]
+
+[node name="CollisionShape2D" type="CollisionShape2D" parent="RigidBody2D" unique_id=1172466935]
+shape = SubResource("RectangleShape2D_jlwj5")
+
+[node name="ColorRect" type="ColorRect" parent="RigidBody2D" unique_id=288048446]
+offset_left = -10.0
+offset_top = -10.0
+offset_right = 10.0
+offset_bottom = 10.0
+color = Color(0.8901961, 0.48235294, 0.25882354, 1)
