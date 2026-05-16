@@ -38,7 +38,8 @@ public partial class DragState : PokerState
 
     public override void MouseUp()
     {
-        RequestStateChange(StateType.Idle);
+        bool placed = Poker.TryPlaceObstacle();
+        RequestStateChange(placed ? StateType.Placed : StateType.Idle);
     }
 
     public override void MouseEnter()

@@ -25,4 +25,9 @@ public enum StateType
     ///     拖拽中
     /// </summary>
     Drag,
+
+    /// <summary>
+    ///     已放置：卡牌被拖拽到场地并成功放置障碍物后的状态
+    /// </summary>
+    Placed,
 }

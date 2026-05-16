@@ -82,4 +82,22 @@ public interface IPoker
     /// </summary>
     /// <param name="state">要设置的状态类型 <see cref="StateType"/></param>
     void ChangeTo(StateType state);
+
+    /// <summary>
+    ///     设置卡牌对应的障碍物场景
+    /// </summary>
+    /// <param name="scene">障碍物 PackedScene</param>
+    void SetObstacleScene(PackedScene scene);
+
+    /// <summary>
+    ///     获取卡牌对应的障碍物场景
+    /// </summary>
+    /// <returns>障碍物 PackedScene，未配置则返回 null</returns>
+    PackedScene? GetObstacleScene();
+
+    /// <summary>
+    ///     尝试在当前鼠标位置放置障碍物
+    /// </summary>
+    /// <returns>放置成功返回 true，否则返回 false</returns>
+    bool TryPlaceObstacle();
 }
