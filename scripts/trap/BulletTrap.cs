@@ -360,6 +360,10 @@ public partial class BulletTrap : TrapStatic
 	///     <para>
 	///         用于区分需要响应碰撞的物理实体和 Area2D 区域
 	 ///         物理实体包括: StaticBody2D, RigidBody2D, CharacterBody2D 等
+	 ///         
+	 ///         v2.1.2 修复:
+	 ///         排除属于其他 Area2D 子节点的物理实体，
+	 ///         防止子弹因为碰到其他陷阱/区域的碰撞形状而意外销毁
 	 ///     </para>
 	/// </summary>
 	private static bool IsPhysicalBody(Node body)
@@ -367,10 +371,57 @@ public partial class BulletTrap : TrapStatic
 		if (body == null) return false;
 		
 		// 检查是否为 Godot 的物理实体类型
-		return body is StaticBody2D || 
-			   body is RigidBody2D || 
-			   body is CharacterBody2D ||
-			   body is AnimatableBody2D;
+		bool isPhysicsType = body is StaticBody2D || 
+		                   body is RigidBody2D || 
+		                   body is CharacterBody2D ||
+		                   body is AnimatableBody2D;
+		
+		if (!isPhysicsType) return false;
+		
+		// 【v2.1.2 关键修复】检查该物理实体是否属于某个 Area2D
+		// 如果一个 StaticBody/RigidBody 下面有 Area2D 子节点，
+		// 说明它是某个区域的一部分（如另一个陷阱），不应该触发撞墙消失
+		if (HasArea2DChild(body))
+		{
+			return false; // 属于 Area2D 的子节点，忽略
+		}
+		
+		return true;
+	}
+
+	/// <summary>
+	///     检查节点是否包含 Area2D 类型的子节点
+	///     <para>
+	 ///         用于判断一个物理实体是否属于某个区域/陷阱系统
+	 ///         如果节点本身或其任意父节点下有 Area2D，则返回 true
+	 ///     </para>
+	/// </summary>
+	private static bool HasArea2DChild(Node node)
+	{
+		if (node == null) return false;
+		
+		try
+		{
+			// 检查直接子节点是否有 Area2D
+			var areas = node.FindChildren("*", "Area2D", false, false);
+			if (areas.Count > 0) return true;
+			
+			// 检查自身是否是 Area2D 的子节点（向上遍历到根节点）
+			var current = node.GetParent();
+			int maxDepth = 5; // 防止无限循环，最多向上查找5层
+			while (current != null && maxDepth > 0)
+			{
+				if (current is Area2D) return true;
+				current = current.GetParent();
+				maxDepth--;
+			}
+			
+			return false;
+		}
+		catch
+		{
+			return false; // 出错时安全返回 false
+		}
 	}
 
 	/// <summary>
