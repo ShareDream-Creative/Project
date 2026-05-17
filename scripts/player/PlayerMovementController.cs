@@ -5,6 +5,7 @@ using GFrameworkGodotTemplate.scripts.core.state.impls;
 using GFrameworkGodotTemplate.scripts.data;
 using GFrameworkGodotTemplate.scripts.data.interfaces;
 using GFrameworkGodotTemplate.scripts.data.model;
+using GFrameworkGodotTemplate.scripts.level;  // ⭐ v2.5 新增：引用 BaseLevelController
 using GFrameworkGodotTemplate.scripts.player.interfaces;
 using GFrameworkGodotTemplate.scripts.player.input;
 using GFrameworkGodotTemplate.scripts.player.listeners;
@@ -395,8 +396,15 @@ public partial class PlayerMovementController : CharacterBody2D, IController, IP
 		InitializeDataManager();
 		InitializeModules();
 		SyncConfigurationToModules();
+
+		// ═══════════════════════════════════════
+		// ⭐ v2.5 关键改进：监听关卡控制器的玩家重置信号
+		//    从源头（BaseLevelController）主动通知，比被动检测更可靠
+		//    彻底解决玩家在梯子上死亡后状态残留的问题
+		// ═══════════════════════════════════════
+		SubscribeToLevelControllerResetSignal();
 		
-		_log.Debug("PlayerMovementController初始化完成 (v2.1 数据驱动架构)");
+		_log.Debug("PlayerMovementController初始化完成 (v2.5 信号驱动重置架构)");
 		if (_inputHandler != null && _physicsMovement != null && _stateController != null)
 		{
 			_log.Debug($"子模块状态: Input={_inputHandler.GetType().Name}, Physics={_physicsMovement.GetType().Name}, State={_stateController.GetType().Name}");
@@ -436,6 +444,16 @@ public partial class PlayerMovementController : CharacterBody2D, IController, IP
 		{
 			_climbCooldownTime -= deltaF;
 		}
+
+		// ═══════════════════════════════════════
+		// ⭐ v2.4 关键修复：攀爬状态安全网（每帧检查）
+		// 解决：玩家在梯子上突然死亡时，Area2D无法触发 BodyExited，
+		// 导致 _isClimbing 状态残留到重生后的问题
+		// ═══════════════════════════════════════
+		if (_isClimbing)
+		{
+			PerformClimbingSafetyCheck();
+		}
 		
 		UpdateStateAndInput(deltaF);
 		
@@ -462,17 +480,247 @@ public partial class PlayerMovementController : CharacterBody2D, IController, IP
 	}
 
 	/// <summary>
+	///     ⭐ v2.4 新增：攀爬状态安全网检测（每帧调用）
+	///     <para>
+	///         解决的核心问题：
+	///         当玩家在梯子上突然死亡（触发陷阱、被敌人攻击等）时，
+	///         Area2D 的 BodyExited 信号可能无法正常触发，导致：
+	///         - _isClimbing 状态残留为 true
+	///         - _currentLadder 引用指向已失效的节点
+	///         - 重生后玩家仍保持攀爬状态（无法移动/跳跃）
+	///         
+	///         检测机制：
+	///         1. 检查梯子节点是否仍然有效（IsInstanceValid）
+	///         2. 检查玩家是否仍在梯子检测范围内
+	///         3. 检查玩家自身状态是否正常（未被销毁/禁用）
+	///         
+	///         触发条件（任一满足即强制退出）：
+	///         - _currentLadder 为 null 或已被释放
+	///         - 玩家位置超出梯子边界（超过阈值）
+	///         - 玩家节点自身失效
+	///     </para>
+	/// </summary>
+	private void PerformClimbingSafetyCheck()
+	{
+		try
+		{
+			// ═══════════════════════════════════════
+			// 检查1：梯子引用有效性
+			// ═══════════════════════════════════════
+			if (_currentLadder == null)
+			{
+				// 梯子引用为空（可能已被其他代码清除但 _isClimbing 未更新）
+				GD.Print("[PlayerMovementController] 🛡️ 安全网: _currentLadder 为 null，强制退出攀爬");
+				EmergencyExitClimbing("梯子引用丢失");
+				return;
+			}
+
+			if (!GodotObject.IsInstanceValid(_currentLadder))
+			{
+				// 梯子节点已被释放（可能场景切换或梯子被销毁）
+				GD.Print("[PlayerMovementController] 🛡️ 安全网: 梯子节点已失效(IsInstanceValid=false)，强制退出攀爬");
+				_currentLadder = null; // 清除无效引用
+				EmergencyExitClimbing("梯子节点失效");
+				return;
+			}
+
+			// ═══════════════════════════════════════
+			// 检查2：玩家自身状态
+			// ═══════════════════════════════════════
+			if (!GodotObject.IsInstanceValid(this))
+			{
+				// 玩家自身即将被销毁，无需处理（避免操作无效对象）
+				return;
+			}
+
+			if (!Visible)
+			{
+				// 玩家被隐藏（可能是死亡/重生过程中的临时状态）
+				// 每60帧输出一次日志（避免刷屏）
+				if (Engine.GetProcessFrames() % 60 == 0)
+				{
+					GD.Print("[PlayerMovementController] 🛡️ 安全网: 玩家处于异常状态（隐藏），准备强制退出攀爬");
+				}
+				
+				// 延迟一帧再检查（给重生逻辑时间完成）
+				if (Engine.GetProcessFrames() % 2 == 0)
+				{
+					EmergencyExitClimbing("玩家状态异常(隐藏)");
+				}
+				return;
+			}
+
+			// ═══════════════════════════════════════
+			// 检查3：玩家是否仍在梯子范围内（距离验证）
+			// ═══════════════════════════════════════
+			try
+			{
+				Vector2 ladderPosition = _currentLadder.GlobalPosition;
+				float distanceToLadder = GlobalPosition.DistanceTo(ladderPosition);
+
+				// 阈值：如果玩家距离梯子超过 200 像素，认为已经脱离
+				// （考虑梯子高度通常在 200-300 像素左右）
+				const float MAX_VALID_DISTANCE = 200f;
+
+				if (distanceToLadder > MAX_VALID_DISTANCE)
+				{
+					GD.Print($"[PlayerMovementController] 🛡️ 安全网: 玩家距离梯子过远 ({distanceToLadder:F1}px > {MAX_VALID_DISTANCE}px)，强制退出攀爬");
+					EmergencyExitClimbing($"距离过远({distanceToLadder:F0}px)");
+					return;
+				}
+			}
+			catch (Exception ex)
+			{
+				// 获取梯子位置失败（可能梯子正在被销毁）
+				GD.Print($"[PlayerMovementController] 🛡️ 安全网: 获取梯子位置异常 ({ex.Message})，强制退出攀爬");
+				EmergencyExitClimbing("梯子位置获取异常");
+				return;
+			}
+
+			// ═══════════════════════════════════════
+			// 所有检查通过，攀爬状态有效
+			// ═══════════════════════════════════════
+			// 每120帧输出一次"安全"日志（约2秒一次，确认系统运行正常）
+			if (Engine.GetProcessFrames() % 120 == 0)
+			{
+				// 静默通过，不输出日志（避免刷屏）
+				// 如需调试可取消下面这行的注释：
+				// GD.Print("[PlayerMovementController] 🛡️ 安全网: 攀爬状态正常 ✓");
+			}
+		}
+		catch (Exception ex)
+		{
+			// 安全网本身出现异常（极端情况）
+			GD.PrintErr($"[PlayerMovementController] 🛡️ 安全网检测异常: {ex.Message}，强制退出攀爬以防死循环");
+			
+			// 极端情况下直接重置所有状态
+			_isClimbing = false;
+			_currentLadder = null;
+			_climbCooldownTime = 1.0f; // 设置较长冷却时间
+			
+			if (_physicsMovement != null)
+			{
+				_physicsMovement.StopImmediately();
+			}
+		}
+	}
+
+	/// <summary>
+	///     ⭐ v2.4 新增：紧急退出攀爬状态（安全网触发时调用）
+	///     <para>
+	///         与普通 ExitClimbingState() 的区别：
+	///         - 不检查当前状态（无条件执行）
+	///         - 清除所有引用和状态
+	///         - 设置较长的冷却时间
+	///         - 输出详细的诊断日志
+	///         - 同步物理模块状态
+	///     </para>
+	/// </summary>
+	/// <param name="reason">退出原因（用于日志）</param>
+	private void EmergencyExitClimbing(string reason)
+	{
+		GD.Print($"[PlayerMovementController] 🚨🚨🚨 [安全网触发] 紧急退出攀爬状态！");
+		GD.Print($"   触发原因: {reason}");
+		GD.Print($"   当前状态: _isClimbing={_isClimbing}, _currentLadder={(_currentLadder != null ? "非null" : "null")}");
+
+		// 1. 无条件退出攀爬状态
+		if (_isClimbing)
+		{
+			try
+			{
+				ExitClimbingState();
+			}
+			catch (Exception ex)
+			{
+				GD.Print($"[PlayerMovementController]   ⚠️ ExitClimbingState() 异常: {ex.Message}（继续执行清理）");
+			}
+		}
+
+		// 2. 强制清除所有引用（双重保险 + 三重保险）
+		_isClimbing = false;
+		
+		if (_currentLadder != null && GodotObject.IsInstanceValid(_currentLadder))
+			{
+				// 尝试通知梯子控制器（如果梯子还有效）
+				try
+				{
+					// 使用接口方法而非具体类型（避免依赖特定类）
+					if (_currentLadder.HasMethod("OnEndClimbing"))
+					{
+						_currentLadder.Call("OnEndClimbing");
+					}
+				}
+				catch (Exception ex)
+				{
+					// 忽略通知失败
+				}
+			}
+		
+		_currentLadder = null; // 最终清除
+
+		// 3. 设置较长的冷却时间（防止立即重新进入）
+		_climbCooldownTime = 0.8f; // 比 normal 的 0.3s-0.5s 更长
+
+		// 4. 完全同步物理模块状态
+		if (_physicsMovement != null)
+		{
+			_physicsMovement.StopImmediately();
+		}
+
+		// 5. 重置速度为安全值（防止高速飞出）
+		Velocity = Vector2.Zero;
+
+		GD.Print($"[PlayerMovementController] ✅✅✅ 紧急退出完成 | 冷却时间: {_climbCooldownTime:F1}s | 所有状态已重置");
+	}
+
+	/// <summary>
 	///     检测并进入攀爬状态（在正常移动状态下调用）
 	///     <para>
 	///         当玩家在梯子区域内且按下A/D键时，进入攀爬状态
 	///         不影响原有移动逻辑
 	///     </para>
 	/// </summary>
+	/// <summary>
+	///     检查是否应该进入攀爬状态
+	///     <para>
+	///         v2.2 增强：
+	///         - 增加更严格的条件检查
+	///         - 添加详细日志便于调试
+	///         - 确保冷却期内绝对不会进入攀爬状态
+	///     </para>
+	/// </summary>
 	private void CheckAndEnterClimbing()
 	{
-		// 冷却期间禁止进入攀爬状态
-		if (_isClimbing || _currentLadder == null || _climbCooldownTime > 0) return;
+		// ═══════════════════════════════════════
+		// 条件检查（任一不满足即跳过）
+		// ═══════════════════════════════════════
+		
+		if (_isClimbing)
+		{
+			// 已在攀爬中，无需重复进入（正常情况）
+			return;
+		}
 
+		if (_currentLadder == null)
+		{
+			// 无梯子引用，无法进入（可能已离开检测区域）
+			return;
+		}
+
+		if (_climbCooldownTime > 0)
+		{
+			// ⭐ 冷却期间：禁止进入攀爬状态（防吸附关键！）
+			// 每60帧输出一次日志（避免刷屏）
+			if (Engine.GetProcessFrames() % 60 == 0)
+			{
+				GD.Print($"[PlayerMovementController] ⏳ 攀爬冷却中: {_climbCooldownTime:F2}s");
+			}
+			return;
+		}
+
+		// ═══════════════════════════════════════
+		// 检测输入：A/D键或方向键
+		// ═══════════════════════════════════════
 		bool shouldEnterClimbing = 
 			Input.IsKeyPressed(Key.A) || 
 			Input.IsKeyPressed(Key.Left) ||
@@ -481,6 +729,7 @@ public partial class PlayerMovementController : CharacterBody2D, IController, IP
 
 		if (shouldEnterClimbing)
 		{
+			GD.Print("[PlayerMovementController] 🪜 检测到攀爬输入，正在进入攀爬状态...");
 			EnterClimbingState();
 		}
 	}
@@ -546,6 +795,173 @@ public partial class PlayerMovementController : CharacterBody2D, IController, IP
 		_dataManager.Data.AddListener(this);
 		
 		_log.Debug("已注册PlayerDataListenerBridge和PlayerMovementController为PlayerData监听器");
+	}
+
+	#endregion
+
+	#region 私有方法 - 信号订阅（v2.5 新增）
+
+	/// <summary>
+	///     ⭐ v2.5 新增：订阅关卡控制器的玩家重置信号
+	///     <para>
+	///         通过连接 BaseLevelController.OnPlayerResetRequested 信号，
+	///         实现从源头主动通知的完整状态重置机制。
+	///         
+	///         设计原理：
+	///         - 当玩家触发陷阱或死亡时，BaseLevelController 会发射此信号
+	///         - PlayerMovementController 监听此信号并立即执行完整的状态清理
+	///         - 包括：攀爬状态、物理速度、所有临时状态
+	///         
+	///         优势：
+	///         - 比被动检测（安全网）更可靠，从源头通知
+	///         - 不依赖 Area2D.BodyExited 的时序
+	///         - 确保在重置流程的最早期执行状态清理
+	 ///     </para>
+	/// </summary>
+	private void SubscribeToLevelControllerResetSignal()
+	{
+		try
+		{
+			// 方法1：通过场景树查找 BaseLevelController
+			var sceneTree = GetTree();
+			if (sceneTree == null)
+			{
+				GD.Print("[PlayerMovementController] ⚠️ 无法获取场景树，延迟尝试订阅重置信号");
+				// 延迟到下一帧再尝试
+				GetTree().CreateTimer(0.1).Timeout += () => SubscribeToLevelControllerResetSignal();
+				return;
+			}
+
+			var currentScene = sceneTree.CurrentScene;
+			if (currentScene == null)
+			{
+				GD.Print("[PlayerMovementController] ⚠️ 当前场景为空，延迟尝试订阅重置信号");
+				GetTree().CreateTimer(0.1).Timeout += () => SubscribeToLevelControllerResetSignal();
+				return;
+			}
+
+			// 查找 BaseLevelController
+			var levelControllers = currentScene.FindChildren("*", "BaseLevelController", true, false);
+			
+			if (levelControllers.Count > 0 && levelControllers[0] is BaseLevelController controller)
+			{
+				// 连接信号
+				controller.PlayerResetRequested += OnLevelControllerResetRequested;
+				
+				GD.Print("[PlayerMovementController] ✅✅✅ 已成功订阅关卡控制器重置信号！");
+				GD.Print($"   信号: OnPlayerResetRequested");
+				GD.Print($"   来源: {controller.Name} ({controller.GetType().Name})");
+			}
+			else
+			{
+				// 方法2：如果当前场景找不到，监听全局信号（备用方案）
+				// 通过延迟等待场景完全加载后再尝试
+				GD.Print("[PlayerMovementController] ℹ️ 当前未找到 BaseLevelController，将在场景加载完成后自动重试...");
+				
+				// 使用 Timer 延迟重试（给场景初始化时间）
+				GetTree().CreateTimer(0.5).Timeout += () => 
+				{
+					// 重试一次
+					var retryControllers = GetTree()?.CurrentScene?.FindChildren("*", "BaseLevelController", true, false);
+					if (retryControllers?.Count > 0 && retryControllers[0] is BaseLevelController retryController)
+					{
+						retryController.PlayerResetRequested += OnLevelControllerResetRequested;
+						GD.Print("[PlayerMovementController] ✅ [延迟订阅成功] 已连接到 BaseLevelController");
+					}
+					else
+					{
+						GD.Print("[PlayerMovementController] ⚠️ [延迟订阅失败] 仍未找到 BaseLevelController（将依赖被动检测作为后备）");
+					}
+				};
+			}
+		}
+		catch (Exception ex)
+		{
+			GD.Print($"[PlayerMovementController] ⚠️ 订阅重置信号异常: {ex.Message}");
+			// 订阅失败不应阻止初始化
+		}
+	}
+
+	/// <summary>
+	///     ⭐ v2.5 新增：处理来自关卡控制器的重置请求信号
+	///     <para>
+	///         这是**最可靠**的状态重置入口点！
+	///         由 BaseLevelController 在 ExecuteFullPlayerReset() 中主动发射，
+	///         确保在玩家被重置到初始位置的最早时机执行状态清理。
+	 ///     </para>
+	///     
+	///     <param name="playerNode">被重置的玩家节点</param>
+	private void OnLevelControllerResetRequested(Node playerNode)
+	{
+		try
+		{
+			GD.Print($"[PlayerMovementController] 📨📨📨 [信号驱动] 收到关卡控制器重置请求！");
+			GD.Print($"   发送者: BaseLevelController");
+			GD.Print($"   时间戳: {Time.GetTicksMsec()}ms");
+
+			// ═══════════════════════════════════════
+			// 执行完整的紧急状态重置
+			// （与 EmergencyExitClimbing 类似但更彻底）
+			// ═══════════════════════════════════════
+			
+			// 1. 强制退出攀爬状态（无条件）
+			if (_isClimbing)
+			{
+				GD.Print("[PlayerMovementController]   检测到攀爬状态，正在强制退出...");
+				try { ExitClimbingState(); } catch { /* 忽略 */ }
+			}
+
+			// 2. 清除所有攀爬相关引用（三重保险）
+			bool hadClimbingState = _isClimbing || _currentLadder != null;
+			
+			_isClimbing = false;
+			
+			if (_currentLadder != null)
+			{
+				// 尝试通知梯子控制器
+				if (_currentLadder.HasMethod("OnEndClimbing"))
+				{
+					try { _currentLadder.Call("OnEndClimbing"); } catch { /* 忽略 */ }
+				}
+				_currentLadder = null;
+			}
+
+			// 3. 设置较长的冷却时间防止立即重新进入
+			_climbCooldownTime = 1.0f; // 1秒冷却（比正常情况更长）
+
+			// 4. 完全同步物理模块状态
+			if (_physicsMovement != null)
+			{
+				_physicsMovement.StopImmediately();
+			}
+
+			// 5. 重置速度为安全值
+			Velocity = Vector2.Zero;
+
+			// 6. 重置输入状态
+			_spacePressedLastFrame = false;
+
+			if (hadClimbingState)
+			{
+				GD.Print("[PlayerMovementController] ✅✅✅ [信号响应] 攀爬状态已完全清除！");
+				GD.Print($"   _isClimbing: {_isClimbing}");
+				GD.Print($"   _currentLadder: {_currentLadder}");
+				GD.Print($"   冷却时间: {_climbCooldownTime:F1}s");
+			}
+			else
+			{
+				GD.Print("[PlayerMovementController] ✓ [信号响应] 状态确认正常（无攀爬残留）");
+			}
+		}
+		catch (Exception ex)
+		{
+			GD.PrintErr($"[PlayerMovementController] ❌ 处理重置信号异常: {ex.Message}");
+			
+			// 极端情况下强制重置
+			_isClimbing = false;
+			_currentLadder = null;
+			_climbCooldownTime = 1.0f;
+		}
 	}
 
 	#endregion
@@ -871,18 +1287,39 @@ public partial class PlayerMovementController : CharacterBody2D, IController, IP
 	/// <summary>
 	///     当玩家离开梯子碰撞区域时调用（自动检测版本）
 	///     <para>
-	///         自动退出攀爬状态（如果正在攀爬）
+	///         强制退出攀爬状态（无论当前是否在攀爬）
 	///         恢复正常移动状态
+	///         清除所有梯子相关引用
+	///         
+	///         v2.2 修复：
+	///         确保玩家脱离检测区域后立即恢复正常状态，
+	///         解决即使离开检测区域仍保持攀爬状态的问题
 	///     </para>
 	/// </summary>
 	public void OnPlayerExitedLadder()
 	{
+		GD.Print($"[PlayerMovementController] 👤 玩家离开梯子区域 - 强制恢复正常状态");
+
+		// 强制退出攀爬状态（无论 _isClimbing 当前值如何）
 		if (_isClimbing)
 		{
 			ExitClimbingState();
 		}
+
+		// ⭐ 关键修复：无条件清除梯子引用，防止状态残留
 		_currentLadder = null;
-		GD.Print($"[PlayerMovementController] 🪜 玩家离开梯子区域");
+		_isClimbing = false; // 双重保险
+
+		// 重置冷却时间（防止立即重新进入）
+		_climbCooldownTime = 0.3f;
+
+		// 同步物理模块状态
+		if (_physicsMovement != null)
+		{
+			_physicsMovement.StopImmediately();
+		}
+
+		GD.Print($"[PlayerMovementController] ✓ 梯子状态已完全重置");
 	}
 
 	/// <summary>
@@ -940,19 +1377,26 @@ public partial class PlayerMovementController : CharacterBody2D, IController, IP
 	}
 
 	/// <summary>
-	///     从梯子跳跃脱离的处理
+	///     从梯子上跳跃脱离
 	///     <para>
-	///         根据输入方向决定跳跃方向
-	///         无方向: 垂直向上
-	///         按住A: 向左上方
-	///         按住D: 向右上方
+	///         v2.2 修复：
+	///         - A键+空格：向左上方跳跃（水平速度向左，垂直速度向上）
+	///         - D键+空格：向右上方跳跃（水平速度向右，垂直速度向上）
+	///         - 仅空格：垂直向上跳跃
+	///         
+	///         增强防吸附机制：
+	///         - 跳跃后设置较长的冷却时间（0.5秒）
+	///         - 强制清除梯子引用，防止下一帧重新进入攀爬状态
+	///         - 确保即使仍在检测区域内也不会被吸附回梯子
 	///     </para>
 	/// </summary>
 	private void JumpOffLadder()
 	{
-		if (!_isClimbing) return;
+		if (!_isClimbing || _currentLadder == null) return;
 
-		var jumpVelocity = new Vector2(0, _climbVerticalJumpForce);
+		GD.Print("[PlayerMovementController] 🚀 玩家从梯子跳跃脱离！");
+
+		// 获取当前输入方向（用于斜向跳跃）
 		float horizontalInput = 0;
 
 		// 优先检测跳离时的方向键（不是攀爬方向）
@@ -965,18 +1409,69 @@ public partial class PlayerMovementController : CharacterBody2D, IController, IP
 			horizontalInput = 1; // 向右
 		}
 
-		if (Math.Abs(horizontalInput) > 0.1f)
+		// 计算跳跃速度向量
+		Vector2 jumpVelocity = Vector2.Zero;
+		
+		// ⭐ v2.2 修复：根据按键组合决定跳跃方向
+		if (horizontalInput < -0.1f)
 		{
-			jumpVelocity.X = horizontalInput * _climbHorizontalJumpForce;
+			// A键按下 → 向左上方跳跃
+			jumpVelocity = new Vector2(
+				-_climbHorizontalJumpForce, // 水平向左（负值）
+				_climbVerticalJumpForce      // 垂直向上（负值=向上）
+			);
+			GD.Print($"[PlayerMovementController]   ↖️ 向左上跳跃 (A+空格)");
+		}
+		else if (horizontalInput > 0.1f)
+		{
+			// D键按下 → 向右上方跳跃
+			jumpVelocity = new Vector2(
+				_climbHorizontalJumpForce,  // 水平向右（正值）
+				_climbVerticalJumpForce      // 垂直向上（负值=向上）
+			);
+			GD.Print($"[PlayerMovementController]   ↗️ 向右上跳跃 (D+空格)");
+		}
+		else
+		{
+			// 仅空格键 → 垂直向上跳跃
+			jumpVelocity = new Vector2(
+				0,                       // 无水平移动
+				_climbVerticalJumpForce   // 垂直向上
+			);
+			GD.Print($"[PlayerMovementController]   ⬆️ 垂直向上跳跃（仅空格）");
 		}
 
+		// ═══════════════════════════════════════
+		// 应用跳跃速度
+		// ═══════════════════════════════════════
 		Velocity = jumpVelocity;
-		ExitClimbingState();
+
+		// ═══════════════════════════════════════
+		// ⭐ 关键修复：增强防吸附机制
+		// ═══════════════════════════════════════
 		
-		// 设置跳开冷却，防止立即重新吸附（0.25秒足够离开梯子碰撞区域）
-		_climbCooldownTime = 0.25f;
-		
-		GD.Print($"[PlayerMovementController] 🪜 从梯子跳跃脱离 (方向: {horizontalInput:F1})");
+		// 1. 通知梯子控制器玩家已离开
+		if (_currentLadder != null && _currentLadder.HasMethod("OnEndClimbing"))
+		{
+			_currentLadder.Call("OnEndClimbing");
+		}
+
+		// 2. 完全退出攀爬状态
+		_isClimbing = false;
+		_currentLadder = null; // ⭐ 关键：立即清除引用！
+
+		// 3. 设置较长的冷却时间（防止立即重新进入）
+		//    从原来的 0.25s 增加到 0.5s
+		_climbCooldownTime = 0.5f;
+
+		// 4. 同步物理模块
+		if (_physicsMovement != null)
+		{
+			_physicsMovement.StopImmediately();
+		}
+
+		GD.Print($"[PlayerMovementController] ✓ 跳跃完成 | 速度: ({jumpVelocity.X:F1}, {jumpVelocity.Y:F1})");
+		GD.Print($"[PlayerMovementController] ✓ 防吸附冷却: 0.5s | 梯子引用已清除");
 	}
 
 	/// <summary>
@@ -984,48 +1479,76 @@ public partial class PlayerMovementController : CharacterBody2D, IController, IP
 	///     <para>
 	///         当玩家触发陷阱后需要重置时调用
 	///         确保：
-	///         1. 退出攀爬状态（如果在攀爬）
-	///         2. 重置所有攀爬相关变量
-	///         3. 启用碰撞体（关键：解决穿模和陷阱检测问题）
-	///         4. 重置物理状态（关键：同步 _physicsMovement._velocity）
-	///         5. 确保玩家可见
+	///         1. 退出攀爬状态（如果在攀爬）- 强制退出，无条件
+	///         2. 重置所有攀爬相关变量（_isClimbing, _currentLadder, _climbCooldownTime）
+	///         3. 重置梯子状态管理器（LadderClimbState）- 如果存在
+	///         4. 启用碰撞体（关键：解决穿模和陷阱检测问题）
+	///         5. 重置物理状态（关键：同步 _physicsMovement._velocity）
+	///         6. 确保玩家可见
+	///         
+	///         v2.2 修复：
+	///         解决玩家在爬梯子时被攻击后重生仍保持爬梯状态的错误
 	///     </para>
 	/// </summary>
 	public void ResetFromTrap()
 	{
-		GD.Print("[PlayerMovementController] 🔄 正在从陷阱中恢复...");
+		GD.Print("[PlayerMovementController] 🔄 正在从陷阱中完全恢复...");
 
-		// 1. 退出攀爬状态
-		if (_isClimbing)
+		// ═══════════════════════════════════════
+		// ⭐ v2.4 增强：优先使用紧急退出机制
+		//    确保即使 Area2D 未触发 BodyExited，
+		//    也能彻底清理攀爬状态（解决死亡残留问题）
+		// ═══════════════════════════════════════
+		if (_isClimbing || _currentLadder != null)
 		{
-			ExitClimbingState();
+			GD.Print("[PlayerMovementController]   🛡️ 检测到攀爬状态残留，调用紧急退出...");
+			EmergencyExitClimbing("ResetFromTrap(陷阱重生)");
 		}
-
-		// 2. 重置攀爬冷却
-		_climbCooldownTime = 0;
-
-		// 3. 重置当前梯子引用
+		
+		// ⭐ 关键：无条件重置所有攀爬相关变量（三重保险）
+		_isClimbing = false;
 		_currentLadder = null;
+		_climbCooldownTime = 0f;
 
-		// 4. 确保自己可见
-		Visible = true;
+		GD.Print("[PlayerMovementController]   ✓ 所有攀爬变量已重置（三重保险）");
 
-		// 5. 关键：完全重置物理模块的速度和状态！
-		//    这会同步 _physicsMovement._velocity 和 CharacterBody2D.Velocity
+		// ═══════════════════════════════════════
+		// 2. 同步物理模块状态（防止速度冲突）
+		// ═══════════════════════════════════════
 		if (_physicsMovement != null)
 		{
 			_physicsMovement.StopImmediately();
-			GD.Print("[PlayerMovementController] ✓ 物理模块已完全重置（速度+地面状态）");
+			GD.Print("[PlayerMovementController]   ✓ 物理模块已同步");
 		}
 
+		// ═══════════════════════════════════════
+		// 3. 确保重力恢复正常
+		// ═══════════════════════════════════════
+		// 攀爬时可能修改了重力相关属性，这里确保恢复默认值
+		// 注意：CharacterBody2D 的重力由引擎自动处理，
+		// 但如果之前有自定义设置需要在这里重置
+
+		// ═══════════════════════════════════════
+		// 4. 确保自己可见
+		// ═══════════════════════════════════════
+		Visible = true;
+
+		// ═══════════════════════════════════════
+		// 5. 关键：完全重置物理模块的速度和状态！
+		//    这会同步 _physicsMovement._velocity 和 CharacterBody2D.Velocity
+		// ═══════════════════════════════════════
+		if (_physicsMovement != null)
+		{
+			_physicsMovement.StopImmediately();
+			GD.Print("[PlayerMovementController]   ✓ 物理模块已完全重置（速度+地面状态）");
+		}
+
+		// ═══════════════════════════════════════
 		// 6. 关键：确保碰撞体启用（使用 Timer 延迟避免 "flushing queries" 错误）
+		// ═══════════════════════════════════════
 		var collisionShape = GetNodeOrNull<CollisionShape2D>("CollisionShape2D");
 		if (collisionShape != null)
 		{
-			// 使用 Timer 延迟到下一帧，确保：
-			// a) TrapStatic 的 CallDeferred 禁用已完成
-			// b) 不会触发 "flushing queries" 错误
-			// c) 碰撞体最终状态为启用
 			var tree = GetTree();
 			if (tree != null)
 			{
@@ -1036,35 +1559,48 @@ public partial class PlayerMovementController : CharacterBody2D, IController, IP
 						collisionShape.Disabled = false;
 					}
 				};
-				GD.Print("[PlayerMovementController] ✓ 碰撞体启用已安排（Timer延迟）");
 			}
 			else
 			{
-				// 回退方案：立即启用
 				collisionShape.Disabled = false;
-				GD.Print("[PlayerMovementController] ✓ 碰撞体已立即启用（回退方案）");
 			}
 		}
 
+		// ═══════════════════════════════════════
 		// 7. 重置输入状态
+		// ═══════════════════════════════════════
 		_spacePressedLastFrame = false;
 
-		GD.Print("[PlayerMovementController] ✓✓✓ 从陷阱中恢复完成！（双重速度系统已同步 + 碰撞体将延迟启用）");
+		GD.Print("[PlayerMovementController] ✓✓✓ 从陷阱中恢复完成！（攀爬状态已完全重置 + 双重速度系统已同步 + 碰撞体将延迟启用）");
 	}
 
 	/// <summary>
-	///     处理攀爬状态下的移动
+	///     处理攀爬移动（v2.3 - 增强边界检测版）
 	///     <para>
-	///         仅在攀爬状态下执行，关闭重力，重置水平速度
-	///         D键: 向上攀爬
-	///         A键: 向下攀爬
-	///         空格键: 跳跃脱离
+	///         核心功能：
+	///         1. 响应 A/D 键输入进行垂直移动（D=上, A=下）
+	///         2. 空格键跳离梯子
+	///         3. ⭐ v2.3 新增：严格的梯子边界检测
+	///         
+	///         v2.3 边界检测机制：
+	///         - 实时获取梯子的全局边界矩形 (Rect2)
+	///         - 每帧检查玩家位置是否超出梯子顶部/底部
+	///         - 超出边界时自动脱离攀爬状态并恢复重力
+	///         - 防止玩家爬到梯子外部（如截图中的问题）
 	///     </para>
-	///     <param name="delta">当前帧的时间间隔(秒)</param>
 	/// </summary>
 	private void HandleClimbingMovement(float delta)
 	{
 		if (!_isClimbing || _currentLadder == null) return;
+
+		// ═══════════════════════════════════════
+		// ⭐ v2.3 关键修复：边界检测（每帧执行）
+		// ═══════════════════════════════════════
+		if (CheckLadderBoundary())
+		{
+			// 已超出边界，方法会自动处理脱离
+			return;
+		}
 
 		// 重置水平速度，不应用重力
 		var velocity = Velocity;
@@ -1084,6 +1620,40 @@ public partial class PlayerMovementController : CharacterBody2D, IController, IP
 			climbSpeed = climbable.ClimbSpeed;
 		}
 
+		// ⭐ v2.3 增强：预计算下一帧位置，防止单帧穿透边界
+		float nextYPosition = GlobalPosition.Y + (climbInput * climbSpeed * (float)delta);
+
+		// 获取梯子边界（用于限制移动）
+		Rect2 ladderBounds = GetLadderBounds();
+
+		// ═══════════════════════════════════════
+		// 边界限制：防止移动超出梯子范围
+		// ═══════════════════════════════════════
+		bool shouldStopClimbing = false;
+
+		// 检查顶部边界（试图向上移动但已到达顶部）
+		if (climbInput < 0 && nextYPosition < ladderBounds.Position.Y)
+		{
+			// 到达顶部，停止向上移动
+			nextYPosition = ladderBounds.Position.Y;
+			velocity.Y = 0;
+			
+			GD.Print("[PlayerMovementController] ⬆️ 到达梯子顶部边界");
+			shouldStopClimbing = true;
+		}
+		
+		// 检查底部边界（试图向下移动但已到达底部）
+		if (climbInput > 0 && nextYPosition > ladderBounds.End.Y)
+		{
+			// 到达底部，停止向下移动
+			nextYPosition = ladderBounds.End.Y;
+			velocity.Y = 0;
+			
+			GD.Print("[PlayerMovementController] ⬇️ 到达梯子底部边界");
+			shouldStopClimbing = true;
+		}
+
+		// 应用速度
 		velocity.Y = climbInput * climbSpeed;
 
 		// 空格键跳离（检测单次按下）
@@ -1098,6 +1668,128 @@ public partial class PlayerMovementController : CharacterBody2D, IController, IP
 
 		Velocity = velocity;
 		MoveAndSlide();
+
+		// 移动后再次检查边界（双重保险）
+		if (shouldStopClimbing || CheckLadderBoundary())
+		{
+			// 已经处理过或超出边界
+		}
+	}
+
+	/// <summary>
+	///     ⭐ v2.3 新增：检查玩家是否超出梯子边界
+	///     <para>
+	///         检测条件：
+	///         1. 玩家位置超出梯子顶部（Y < ladderTop）
+	///         2. 玩家位置超出梯子底部（Y > ladderBottom）
+	///         
+	///         触发动作：
+	///         - 自动调用 ExitClimbingState()
+	///         - 清除 _currentLadder 引用
+	///         - 设置冷却时间防止立即重入
+	///         - 恢复正常重力
+	///     </para>
+	/// </summary>
+	/// <returns>true 如果已超出边界并处理完毕</returns>
+	private bool CheckLadderBoundary()
+	{
+		try
+		{
+			if (_currentLadder == null) return false;
+
+			// 获取梯子边界
+			Rect2 bounds = GetLadderBounds();
+
+			// 获取玩家当前位置
+			Vector2 playerPos = GlobalPosition;
+
+			// 检查是否超出顶部边界
+			if (playerPos.Y < bounds.Position.Y)
+			{
+				GD.Print($"[PlayerMovementController] 🚨 超出梯子顶部边界！");
+				GD.Print($"   玩家Y: {playerPos.Y:F1} | 梯子顶部Y: {bounds.Position.Y:F1}");
+				GD.Print($"   差值: {(playerPos.Y - bounds.Position.Y):F1}px");
+
+				ForceExitClimbing("顶部");
+				return true;
+			}
+
+			// 检查是否超出底部边界
+			if (playerPos.Y > bounds.End.Y)
+			{
+				GD.Print($"[PlayerMovementController] 🚨 超出梯子底部边界！");
+				GD.Print($"   玩家Y: {playerPos.Y:F1} | 梯子底部Y: {bounds.End.Y:F1}");
+				GD.Print($"   差值: {(playerPos.Y - bounds.End.Y):F1}px");
+
+				ForceExitClimbing("底部");
+				return true;
+			}
+
+			// 在边界内，正常
+			return false;
+		}
+		catch (Exception ex)
+		{
+			GD.Print($"[PlayerMovementController] ⚠️ 边界检测异常: {ex.Message}");
+			return false;
+		}
+	}
+
+	/// <summary>
+	///     ⭐ v2.3 新增：强制脱离攀爬状态（边界溢出时调用）
+	/// </summary>
+	/// <param name="reason">脱离原因（"顶部"/"底部"）</param>
+	private void ForceExitClimbing(string reason)
+	{
+		GD.Print($"[PlayerMovementController] 🔓 强制脱离攀爬（{reason}超出）");
+
+		// 退出攀爬状态
+		if (_isClimbing)
+		{
+			ExitClimbingState();
+		}
+
+		// 清除引用
+		_currentLadder = null;
+		_isClimbing = false;
+
+		// 设置冷却时间防止立即重入
+		_climbCooldownTime = 0.5f;
+
+		// 同步物理模块
+		if (_physicsMovement != null)
+		{
+			_physicsMovement.StopImmediately();
+		}
+
+		GD.Print($"[PlayerMovementController] ✓ 已强制脱离 | 冷却: 0.5s");
+	}
+
+	/// <summary>
+	///     ⭐ v2.3 新增：获取当前梯子的全局边界
+	/// </summary>
+	/// <returns>梯子的 Rect2 边界矩形</returns>
+	private Rect2 GetLadderBounds()
+	{
+		// 默认边界（如果无法获取）
+		Rect2 defaultBounds = new Rect2(
+			GlobalPosition - new Vector2(10, 147),  // 中心点偏移
+			new Vector2(20, 294)                     // 默认尺寸
+		);
+
+		try
+		{
+			if (_currentLadder is GFrameworkGodotTemplate.scripts.world.interfaces.ILadderClimbable climbable)
+			{
+				return climbable.GetGlobalBounds();
+			}
+		}
+		catch (Exception ex)
+		{
+			GD.Print($"[PlayerMovementController] ⚠️ 获取梯子边界失败: {ex.Message}");
+		}
+
+		return defaultBounds;
 	}
 
 	#endregion

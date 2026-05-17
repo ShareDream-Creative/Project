@@ -46,6 +46,34 @@ namespace GFrameworkGodotTemplate.scripts.level;
 [Log]
 public partial class BaseLevelController : Node2D, IController, ISceneBehaviorProvider, ISimpleScene
 {
+	#region 信号定义
+
+	/// <summary>
+	///     ⭐ v2.5 新增：玩家重置请求信号
+	///     <para>
+	///         当玩家需要被重置到初始位置时（触发陷阱、死亡等），
+	///         此信号会被发射，通知所有监听者（特别是 PlayerMovementController）
+	///         执行完整的状态重置，包括：
+	///         - 攀爬状态清理
+	///         - 物理速度归零
+	///         - 所有临时状态恢复默认值
+	///         
+	///         设计原理：
+	///         从关卡控制器源头主动发送信号，比被动检测更可靠。
+	///         解决 Area2D.BodyExited 未触发的竞态条件问题。
+	 ///     </para>
+	///     
+	///     使用示例（在 PlayerMovementController 中监听）:
+	///     <code>
+	///     var levelController = GetNode&lt;BaseLevelController&gt;("/root/...BaseLevelController");
+	///     levelController.OnPlayerResetRequested += OnResetRequested;
+	///     </code>
+	/// </summary>
+	[Signal]
+	public delegate void PlayerResetRequestedEventHandler(Node playerNode);
+
+	#endregion
+
 	#region 私有字段
 
 	/// <summary>场景行为实例</summary>

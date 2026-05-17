@@ -88,17 +88,24 @@ public partial class PlayerResetHandler : IPlayerResetHandler
 
 			_log.Info("[PlayerResetHandler] ══════════ 开始执行完全重置 ══════════");
 
-			_log.Info("[PlayerResetHandler] 步骤1/3: 恢复玩家可见性...");
+			// ═══════════════════════════════════════
+			// 步骤1-4：按顺序执行重置
+			// 注意：攀爬状态清理已集成在步骤2 (ResetPhysicsStateForPlayer) 中
+			// ═══════════════════════════════════════
+
+			_log.Info("[PlayerResetHandler] 步骤1/4: 恢复玩家可见性...");
 			RestorePlayerVisibility(playerNode);
 
-			_log.Info("[PlayerResetHandler] 步骤2/3: 重置玩家物理状态...");
-			ResetPhysicsStateForPlayer(playerNode);
+			_log.Info("[PlayerResetHandler] 步骤2/4: 重置玩家物理状态（含攀爬状态强制清理）...");
+			ResetPhysicsStateForPlayer(playerNode);  // ← 这里会强制清理攀爬状态！
 
-			_log.Info("[PlayerResetHandler] 步骤3/3: 移动玩家到 Begin 位置...");
+			_log.Info("[PlayerResetHandler] 步骤3/4: 移动玩家到 Begin 位置...");
 			
-			// 执行位置重置（MoveAndSlide 将在内部调用以确保碰撞有效）
+			// 执行位置重置
 			MovePlayerToBeginPosition(playerNode);
 
+			_log.Info("[PlayerResetHandler] 步骤4/4: 触发重生完成回调...");
+			
 			// 触发生成完成回调
 			var beginPos = _data.GetBeginPositionOrDefault();
 			var playerNode2D = ResolveToNode2D(playerNode);
@@ -241,25 +248,67 @@ public partial class PlayerResetHandler : IPlayerResetHandler
 			{
 				ResetPlayerPhysicsState(characterBody);
 				
-				// 额外：调用 PlayerMovementController 的完整陷阱恢复
+				// ═══════════════════════════════════════
+				// ⭐ v2.6 关键修复：强制清理攀爬状态
+				//    使用 Call() 方法，不依赖类型查找！
+				//    解决 GetNodeOrNull<PlayerMovementController>() 找不到的问题
+				// ═══════════════════════════════════════
+				
+				bool resetSuccess = false;
+				
+				// 方法1：尝试通过类型查找（原有逻辑）
 				var movementCtrl = characterBody.GetNodeOrNull<PlayerMovementController>("PlayerMovementController") ??
-								   characterBody.GetNodeOrNull<PlayerMovementController>("CharacterBody2D");
+								   characterBody.GetNodeOrNull<PlayerMovementController>("");
 				if (movementCtrl != null)
 				{
 					movementCtrl.ResetFromTrap();
-					_log.Info("[PlayerResetHandler] ✓ PlayerMovementController 从陷阱中恢复");
+					resetSuccess = true;
+					_log.Info("[PlayerResetHandler] ✓✓ 通过类型查找调用 ResetFromTrap()");
 				}
 				else
 				{
-					_log.Debug("[PlayerResetHandler] 未找到 PlayerMovementController");
+					// ⭐ 方法2：使用 Call() 强制调用（不依赖类型！）
+					if (characterBody.HasMethod("ResetFromTrap"))
+					{
+						characterBody.Call("ResetFromTrap");
+						resetSuccess = true;
+						_log.Info("[PlayerResetHandler] ✓✓✓ 通过 Call() 强制调用 ResetFromTrap()（类型查找失败时的后备方案）");
+					}
+					else
+					{
+						_log.Warn("[PlayerResetHandler] ⚠️ 无法调用 ResetFromTrap()：方法不存在");
+					}
 				}
 				
-				_log.Info("[PlayerResetHandler] ✓ 物理状态已重置");
+				// ⭐ 方法3：直接强制设置攀爬相关变量（终极后备）
+				if (!resetSuccess && characterBody.HasMethod("set_IsClimbing"))
+				{
+					characterBody.Call("set_IsClimbing", false);
+					characterBody.Call("set_CurrentLadder", null);
+					_log.Info("[PlayerResetHandler] ✓ 通过属性设置强制清除攀爬状态");
+				}
+				
+				_log.Info("[PlayerResetHandler] ✓ 物理状态已重置（含攀爬状态清理）");
+			}
+			else
+			{
+				_log.Warn("[PlayerResetHandler] ⚠️ 未找到 CharacterBody2D，跳过物理状态重置");
 			}
 		}
 		catch (Exception ex)
 		{
 			_log.Error($"[PlayerResetHandler] ❌ 重置物理状态异常: {ex.Message}");
+			
+			// 极端情况下的最后尝试：直接对 playerNode 调用
+			try
+			{
+				if (playerNode?.HasMethod("ResetFromTrap") == true)
+				{
+					playerNode.Call("ResetFromTrap");
+					_log.Info("[PlayerResetHandler] ✓ [异常恢复] 对 playerNode 直接调用 ResetFromTrap()");
+				}
+			}
+			catch { /* 忽略 */ }
 		}
 	}
 

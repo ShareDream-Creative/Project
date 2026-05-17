@@ -372,9 +372,9 @@ public partial class BulletTrap : TrapStatic
 		
 		// 检查是否为 Godot 的物理实体类型
 		bool isPhysicsType = body is StaticBody2D || 
-		                   body is RigidBody2D || 
-		                   body is CharacterBody2D ||
-		                   body is AnimatableBody2D;
+						   body is RigidBody2D || 
+						   body is CharacterBody2D ||
+						   body is AnimatableBody2D;
 		
 		if (!isPhysicsType) return false;
 		
