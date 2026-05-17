@@ -6,6 +6,8 @@
 [ext_resource type="PackedScene" uid="uid://buvbhb4dknf7e" path="res://scenes/platform/Ladder.tscn" id="4_63a73"]
 [ext_resource type="PackedScene" uid="uid://bekvxk16ymoeq" path="res://scenes/platform/glass.tscn" id="5_m3ko2"]
 [ext_resource type="PackedScene" uid="uid://b68to22npgjlb" path="res://scenes/trap/turret.tscn" id="6_8g4gi"]
+[ext_resource type="PackedScene" uid="uid://wh6tw4neb3et" path="res://scenes/trap/bullet.tscn" id="7_2m5or"]
+[ext_resource type="Script" uid="uid://bpk8fj8thvdyi" path="res://scripts/trap/TurretController.cs" id="7_2qo8r"]
 [ext_resource type="Script" uid="uid://dkraaoqxtaxj8" path="res://scripts/world/AutoOscillatePlatform.cs" id="7_evhwu"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_lorwu"]
@@ -62,7 +64,9 @@ scale = Vector2(18.760002, 1.2800006)
 [node name="Turret" parent="ground" unique_id=1873261723 instance=ExtResource("6_8g4gi")]
 position = Vector2(766, 426)
 scale = Vector2(1, 2.5200005)
-DetectLength = 501.0
+script = ExtResource("7_2qo8r")
+
+[node name="Bullet" parent="ground/Turret" unique_id=1438942146 instance=ExtResource("7_2m5or")]
 
 [node name="moveturret" type="Node2D" parent="ground" unique_id=1280092004]
 position = Vector2(766, 39)
@@ -82,7 +86,11 @@ scale = Vector2(0.45656106, 6.319999)
 color = Color(0, 0, 0, 0.48235294)
 
 [node name="PlatformMove" type="Node2D" parent="ground/moveturret" unique_id=871382743]
+script = ExtResource("7_2qo8r")
 
-[node name="Turret2" parent="ground/moveturret/PlatformMove" unique_id=1051090004 instance=ExtResource("6_8g4gi")]
+[node name="Turret" parent="ground/moveturret/PlatformMove" unique_id=1051090004 instance=ExtResource("6_8g4gi")]
 position = Vector2(0, 0)
 scale = Vector2(4.839998, 3.0400004)
+script = ExtResource("7_2qo8r")
+
+[node name="Bullet" parent="ground/moveturret/PlatformMove/Turret" unique_id=1424871521 instance=ExtResource("7_2m5or")]

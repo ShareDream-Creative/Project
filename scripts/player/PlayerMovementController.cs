@@ -261,6 +261,50 @@ public partial class PlayerMovementController : CharacterBody2D, IController, IP
 
 	#endregion
 
+	#region 梯子攀爬相关变量与配置（增量添加，不修改原有代码）
+
+	/// <summary>
+	///     标记玩家是否处于攀爬状态（互斥状态）
+	///     <para>
+	///         true: 处于攀爬状态，使用攀爬逻辑
+	///         false: 正常状态，使用原有移动逻辑
+	///     </para>
+	/// </summary>
+	private bool _isClimbing;
+
+	/// <summary>
+	///     当前玩家所在的梯子节点引用
+	///     <para>
+	///         记录梯子信息，用于获取攀爬速度和边界检测
+	///         null: 玩家不在梯子区域
+	///     </para>
+	/// </summary>
+	private Node2D? _currentLadder;
+
+	/// <summary>
+	///     攀爬水平跳跃脱离力（像素/秒）
+	/// </summary>
+	[Export]
+	private float _climbHorizontalJumpForce = 300.0f;
+
+	/// <summary>
+	///     攀爬垂直跳跃脱离力（像素/秒）
+	/// </summary>
+	[Export]
+	private float _climbVerticalJumpForce = -400.0f;
+
+	/// <summary>
+	///     记录上一帧空格键状态，用于检测单次按下
+	/// </summary>
+	private bool _spacePressedLastFrame = false;
+
+	/// <summary>
+	///     跳开梯子后的冷却时间（秒），防止立即重新吸附
+	/// </summary>
+	private float _climbCooldownTime = 0.0f;
+
+	#endregion
+
 	#region 子模块实例 (组合关系)
 
 	/// <summary>
@@ -376,6 +420,7 @@ public partial class PlayerMovementController : CharacterBody2D, IController, IP
 	///     <para>
 	///         Godot引擎以固定时间间隔调用 (默认60FPS)
 	///         执行所有的物理计算和移动逻辑
+	///         ✨ 增量扩展: 添加攀爬状态分支判断
 	///     </para>
 	///     <param name="delta">
 	///     距离上一帧的时间间隔 (秒)
@@ -386,6 +431,12 @@ public partial class PlayerMovementController : CharacterBody2D, IController, IP
 	{
 		var deltaF = (float)delta;
 		
+		// 递减攀爬冷却时间
+		if (_climbCooldownTime > 0)
+		{
+			_climbCooldownTime -= deltaF;
+		}
+		
 		UpdateStateAndInput(deltaF);
 		
 		if (!_stateController!.IsInputEnabled)
@@ -395,7 +446,43 @@ public partial class PlayerMovementController : CharacterBody2D, IController, IP
 			return;
 		}
 
-		ProcessMovement(deltaF);
+		// ✨ 增量扩展: 状态分支判断
+		// 攀爬状态: 执行新增的攀爬逻辑
+		// 正常状态: 完全执行原有移动逻辑（不做任何修改）
+		if (_isClimbing)
+		{
+			HandleClimbingMovement(deltaF);
+		}
+		else
+		{
+			// 非攀爬状态: 先检查是否需要进入攀爬
+			CheckAndEnterClimbing();
+			ProcessMovement(deltaF);
+		}
+	}
+
+	/// <summary>
+	///     检测并进入攀爬状态（在正常移动状态下调用）
+	///     <para>
+	///         当玩家在梯子区域内且按下A/D键时，进入攀爬状态
+	///         不影响原有移动逻辑
+	///     </para>
+	/// </summary>
+	private void CheckAndEnterClimbing()
+	{
+		// 冷却期间禁止进入攀爬状态
+		if (_isClimbing || _currentLadder == null || _climbCooldownTime > 0) return;
+
+		bool shouldEnterClimbing = 
+			Input.IsKeyPressed(Key.A) || 
+			Input.IsKeyPressed(Key.Left) ||
+			Input.IsKeyPressed(Key.D) || 
+			Input.IsKeyPressed(Key.Right);
+
+		if (shouldEnterClimbing)
+		{
+			EnterClimbingState();
+		}
 	}
 
 	#endregion
@@ -761,6 +848,256 @@ public partial class PlayerMovementController : CharacterBody2D, IController, IP
 	public void OnSprintMultiplierChanged(float oldValue, float newValue)
 	{
 		GD.Print($"[PlayerMovementController] ℹ️ 奔跑倍率变化: {oldValue:F2} → {newValue:F2} (当前未使用)");
+	}
+
+	#endregion
+
+	#region 梯子攀爬相关方法（增量添加，不修改原有代码）
+
+	/// <summary>
+	///     当玩家进入梯子碰撞区域时调用（自动检测版本）
+	///     <para>
+	///         仅标记当前梯子引用，不会自动进入攀爬状态
+	///         不影响原有移动功能
+	///     </para>
+	///     <param name="ladder">梯子节点</param>
+	/// </summary>
+	public void OnPlayerEnteredLadder(Node2D ladder)
+	{
+		_currentLadder = ladder;
+		GD.Print($"[PlayerMovementController] 🪜 玩家进入梯子区域");
+	}
+
+	/// <summary>
+	///     当玩家离开梯子碰撞区域时调用（自动检测版本）
+	///     <para>
+	///         自动退出攀爬状态（如果正在攀爬）
+	///         恢复正常移动状态
+	///     </para>
+	/// </summary>
+	public void OnPlayerExitedLadder()
+	{
+		if (_isClimbing)
+		{
+			ExitClimbingState();
+		}
+		_currentLadder = null;
+		GD.Print($"[PlayerMovementController] 🪜 玩家离开梯子区域");
+	}
+
+	/// <summary>
+	///     进入攀爬状态的处理
+	///     <para>
+	///         重置速度，关闭重力，标记攀爬状态
+	///     </para>
+	/// </summary>
+	private void EnterClimbingState()
+	{
+		if (_isClimbing || _currentLadder == null) return;
+
+		_isClimbing = true;
+		Velocity = Vector2.Zero;
+
+		// 通知梯子玩家开始攀爬（防止进入/离开循环）
+		if (_currentLadder.HasMethod("OnStartClimbing"))
+		{
+			_currentLadder.Call("OnStartClimbing");
+		}
+
+		GD.Print($"[PlayerMovementController] 🪜 进入攀爬状态");
+	}
+
+	/// <summary>
+	///     退出攀爬状态的处理
+	///     <para>
+	///         恢复正常状态，同步物理模块（关键！）
+	///         确保下一帧 ProcessMovement() 使用正确的速度
+	///     </para>
+	/// </summary>
+	private void ExitClimbingState()
+	{
+		if (!_isClimbing) return;
+
+		_isClimbing = false;
+
+		// 关键：同步物理模块的速度状态！
+		// 攀爬时我们直接操作了 CharacterBody2D.Velocity，
+		// 现在需要确保 _physicsMovement._velocity 也被重置，
+		// 否则下一帧 ProcessMovement() 会用旧值覆盖正确的速度
+		if (_physicsMovement != null)
+		{
+			_physicsMovement.StopImmediately();
+			GD.Print("[PlayerMovementController] ✓ 退出攀爬时已同步物理模块");
+		}
+
+		// 通知梯子玩家结束攀爬
+		if (_currentLadder != null && _currentLadder.HasMethod("OnEndClimbing"))
+		{
+			_currentLadder.Call("OnEndClimbing");
+		}
+
+		GD.Print($"[PlayerMovementController] 🪜 退出攀爬状态");
+	}
+
+	/// <summary>
+	///     从梯子跳跃脱离的处理
+	///     <para>
+	///         根据输入方向决定跳跃方向
+	///         无方向: 垂直向上
+	///         按住A: 向左上方
+	///         按住D: 向右上方
+	///     </para>
+	/// </summary>
+	private void JumpOffLadder()
+	{
+		if (!_isClimbing) return;
+
+		var jumpVelocity = new Vector2(0, _climbVerticalJumpForce);
+		float horizontalInput = 0;
+
+		// 优先检测跳离时的方向键（不是攀爬方向）
+		if (Input.IsKeyPressed(Key.A) || Input.IsKeyPressed(Key.Left)) 
+		{
+			horizontalInput = -1; // 向左
+		}
+		if (Input.IsKeyPressed(Key.D) || Input.IsKeyPressed(Key.Right)) 
+		{
+			horizontalInput = 1; // 向右
+		}
+
+		if (Math.Abs(horizontalInput) > 0.1f)
+		{
+			jumpVelocity.X = horizontalInput * _climbHorizontalJumpForce;
+		}
+
+		Velocity = jumpVelocity;
+		ExitClimbingState();
+		
+		// 设置跳开冷却，防止立即重新吸附（0.25秒足够离开梯子碰撞区域）
+		_climbCooldownTime = 0.25f;
+		
+		GD.Print($"[PlayerMovementController] 🪜 从梯子跳跃脱离 (方向: {horizontalInput:F1})");
+	}
+
+	/// <summary>
+	///     从陷阱中完全恢复玩家（重置所有相关状态）
+	///     <para>
+	///         当玩家触发陷阱后需要重置时调用
+	///         确保：
+	///         1. 退出攀爬状态（如果在攀爬）
+	///         2. 重置所有攀爬相关变量
+	///         3. 启用碰撞体（关键：解决穿模和陷阱检测问题）
+	///         4. 重置物理状态（关键：同步 _physicsMovement._velocity）
+	///         5. 确保玩家可见
+	///     </para>
+	/// </summary>
+	public void ResetFromTrap()
+	{
+		GD.Print("[PlayerMovementController] 🔄 正在从陷阱中恢复...");
+
+		// 1. 退出攀爬状态
+		if (_isClimbing)
+		{
+			ExitClimbingState();
+		}
+
+		// 2. 重置攀爬冷却
+		_climbCooldownTime = 0;
+
+		// 3. 重置当前梯子引用
+		_currentLadder = null;
+
+		// 4. 确保自己可见
+		Visible = true;
+
+		// 5. 关键：完全重置物理模块的速度和状态！
+		//    这会同步 _physicsMovement._velocity 和 CharacterBody2D.Velocity
+		if (_physicsMovement != null)
+		{
+			_physicsMovement.StopImmediately();
+			GD.Print("[PlayerMovementController] ✓ 物理模块已完全重置（速度+地面状态）");
+		}
+
+		// 6. 关键：确保碰撞体启用（使用 Timer 延迟避免 "flushing queries" 错误）
+		var collisionShape = GetNodeOrNull<CollisionShape2D>("CollisionShape2D");
+		if (collisionShape != null)
+		{
+			// 使用 Timer 延迟到下一帧，确保：
+			// a) TrapStatic 的 CallDeferred 禁用已完成
+			// b) 不会触发 "flushing queries" 错误
+			// c) 碰撞体最终状态为启用
+			var tree = GetTree();
+			if (tree != null)
+			{
+				tree.CreateTimer(0).Timeout += () => 
+				{
+					if (GodotObject.IsInstanceValid(collisionShape))
+					{
+						collisionShape.Disabled = false;
+					}
+				};
+				GD.Print("[PlayerMovementController] ✓ 碰撞体启用已安排（Timer延迟）");
+			}
+			else
+			{
+				// 回退方案：立即启用
+				collisionShape.Disabled = false;
+				GD.Print("[PlayerMovementController] ✓ 碰撞体已立即启用（回退方案）");
+			}
+		}
+
+		// 7. 重置输入状态
+		_spacePressedLastFrame = false;
+
+		GD.Print("[PlayerMovementController] ✓✓✓ 从陷阱中恢复完成！（双重速度系统已同步 + 碰撞体将延迟启用）");
+	}
+
+	/// <summary>
+	///     处理攀爬状态下的移动
+	///     <para>
+	///         仅在攀爬状态下执行，关闭重力，重置水平速度
+	///         D键: 向上攀爬
+	///         A键: 向下攀爬
+	///         空格键: 跳跃脱离
+	///     </para>
+	///     <param name="delta">当前帧的时间间隔(秒)</param>
+	/// </summary>
+	private void HandleClimbingMovement(float delta)
+	{
+		if (!_isClimbing || _currentLadder == null) return;
+
+		// 重置水平速度，不应用重力
+		var velocity = Velocity;
+		velocity.X = 0;
+
+		// 攀爬输入映射: D=上, A=下（使用与现有系统一致的方式）
+		float climbInput = 0;
+		if (Input.IsKeyPressed(Key.D) || Input.IsKeyPressed(Key.Right)) climbInput = -1;  // D/右 = 向上（负Y）
+		if (Input.IsKeyPressed(Key.A) || Input.IsKeyPressed(Key.Left)) climbInput = 1; // A/左 = 向下（正Y）
+
+		// 从梯子获取攀爬速度
+		var climbSpeed = 150.0f; // 默认值
+
+		// 尝试从梯子节点获取攀爬速度（通过接口）
+		if (_currentLadder is GFrameworkGodotTemplate.scripts.world.interfaces.ILadderClimbable climbable)
+		{
+			climbSpeed = climbable.ClimbSpeed;
+		}
+
+		velocity.Y = climbInput * climbSpeed;
+
+		// 空格键跳离（检测单次按下）
+		bool spacePressedThisFrame = Input.IsKeyPressed(Key.Space);
+		if (spacePressedThisFrame && !_spacePressedLastFrame)
+		{
+			JumpOffLadder();
+			_spacePressedLastFrame = spacePressedThisFrame;
+			return;
+		}
+		_spacePressedLastFrame = spacePressedThisFrame;
+
+		Velocity = velocity;
+		MoveAndSlide();
 	}
 
 	#endregion

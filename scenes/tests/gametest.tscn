@@ -4,11 +4,15 @@
 [ext_resource type="Material" uid="uid://dsuylvexqgefv" path="res://resource/shader/bass_red.tres" id="2_nbt8x"]
 [ext_resource type="PackedScene" uid="uid://bekvxk16ymoeq" path="res://scenes/platform/glass.tscn" id="3_lqvvs"]
 [ext_resource type="PackedScene" uid="uid://b68to22npgjlb" path="res://scenes/trap/turret.tscn" id="4_uyrkt"]
-
-[sub_resource type="CanvasTexture" id="CanvasTexture_lqvvs"]
+[ext_resource type="PackedScene" uid="uid://wh6tw4neb3et" path="res://scenes/trap/bullet.tscn" id="5_pu572"]
+[ext_resource type="Script" uid="uid://bpk8fj8thvdyi" path="res://scripts/trap/TurretController.cs" id="5_umuc2"]
+[ext_resource type="PackedScene" uid="uid://buvbhb4dknf7e" path="res://scenes/platform/Ladder.tscn" id="6_ahmkn"]
+[ext_resource type="PackedScene" uid="uid://1rmioom8ydcq" path="res://scenes/platform/wall.tscn" id="8_xjq40"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_lqvvs"]
-size = Vector2(848, 55)
+size = Vector2(875.0001, 65)
+
+[sub_resource type="CanvasTexture" id="CanvasTexture_lqvvs"]
 
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_nbt8x"]
 size = Vector2(49, 37)
@@ -17,27 +21,28 @@ size = Vector2(49, 37)
 script = ExtResource("1_nbt8x")
 
 [node name="GROUND" type="Node2D" parent="." unique_id=1782179669]
-position = Vector2(-3, 0)
-
-[node name="Sprite2D" type="Sprite2D" parent="GROUND" unique_id=877745140]
-material = ExtResource("2_nbt8x")
-position = Vector2(467.00006, 449.99997)
-rotation = 3.1415927
-scale = Vector2(859.40204, 62.19941)
-texture = SubResource("CanvasTexture_lqvvs")
+position = Vector2(-60, 11)
+scale = Vector2(1.1999998, 1)
 
 [node name="StaticBody2D" type="StaticBody2D" parent="GROUND" unique_id=1718816835]
-position = Vector2(151, 231)
+position = Vector2(154, 230)
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="GROUND/StaticBody2D" unique_id=1034087019]
-position = Vector2(310, 215)
+position = Vector2(313.5001, 227)
 shape = SubResource("RectangleShape2D_lqvvs")
+
+[node name="Sprite2D" type="Sprite2D" parent="GROUND/StaticBody2D" unique_id=877745140]
+material = ExtResource("2_nbt8x")
+position = Vector2(313.00006, 219.99997)
+rotation = -3.1415925
+scale = Vector2(859.40204, 62.19941)
+texture = SubResource("CanvasTexture_lqvvs")
 
 [node name="End" type="Area2D" parent="." unique_id=14275492]
 unique_name_in_owner = true
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="End" unique_id=565269224]
-position = Vector2(839, 397)
+position = Vector2(918, 403)
 shape = SubResource("RectangleShape2D_nbt8x")
 
 [node name="Sprite2D" type="Sprite2D" parent="." unique_id=1585816188]
@@ -69,4 +74,17 @@ position = Vector2(130, 331)
 position = Vector2(254, 395)
 
 [node name="Turret" parent="." unique_id=1873261723 instance=ExtResource("4_uyrkt")]
-position = Vector2(461, 383)
+position = Vector2(272, 129)
+script = ExtResource("5_umuc2")
+ColdTime = 0.5
+DetectLength = 427.0
+DetectWidth = 96.0
+DetectRotationDeg = -94.30000000000001
+
+[node name="Bullet" parent="Turret" unique_id=1438942146 instance=ExtResource("5_pu572")]
+
+[node name="Ladder" parent="." unique_id=1574291903 instance=ExtResource("6_ahmkn")]
+position = Vector2(70, 263)
+
+[node name="Wall" parent="." unique_id=1471831055 instance=ExtResource("8_xjq40")]
+position = Vector2(744, 328)

@@ -26,3 +26,5 @@ GFramework-Godot-Template.sln.DotSettings.user
 addons/*
 !addons/.editorconfig
 .addons/*
+
+.fake

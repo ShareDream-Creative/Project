@@ -88,18 +88,19 @@ public partial class PlayerResetHandler : IPlayerResetHandler
 
 			_log.Info("[PlayerResetHandler] ══════════ 开始执行完全重置 ══════════");
 
-			_log.Info("[PlayerResetHandler] 步骤1/4: 恢复玩家可见性...");
+			_log.Info("[PlayerResetHandler] 步骤1/3: 恢复玩家可见性...");
 			RestorePlayerVisibility(playerNode);
 
-			_log.Info("[PlayerResetHandler] 步骤2/4: 移动玩家到 Begin 位置...");
-			MovePlayerToBeginPosition(playerNode);
-
-			_log.Info("[PlayerResetHandler] 步骤3/4: 重置玩家物理状态...");
+			_log.Info("[PlayerResetHandler] 步骤2/3: 重置玩家物理状态...");
 			ResetPhysicsStateForPlayer(playerNode);
 
-			_log.Info("[PlayerResetHandler] 步骤4/4: 触发生成完成回调...");
-			var beginPos = _data.GetBeginPositionOrDefault();
+			_log.Info("[PlayerResetHandler] 步骤3/3: 移动玩家到 Begin 位置...");
 			
+			// 执行位置重置（MoveAndSlide 将在内部调用以确保碰撞有效）
+			MovePlayerToBeginPosition(playerNode);
+
+			// 触发生成完成回调
+			var beginPos = _data.GetBeginPositionOrDefault();
 			var playerNode2D = ResolveToNode2D(playerNode);
 			if (playerNode2D != null)
 			{
@@ -110,7 +111,7 @@ public partial class PlayerResetHandler : IPlayerResetHandler
 				_log.Warn("[PlayerResetHandler] ⚠️ 无法转换玩家节点为 Node2D，跳过回调");
 			}
 
-			_log.Info("[PlayerResetHandler] ✓✓✓✓ 完全重置完成 ══════════");
+			_log.Info("[PlayerResetHandler] ✓✓✓ 完全重置完成 ══════════");
 		}
 		catch (Exception ex)
 		{
@@ -134,6 +135,11 @@ public partial class PlayerResetHandler : IPlayerResetHandler
 			{
 				characterBody.Velocity = Vector2.Zero;
 				characterBody.GlobalPosition = targetPosition;
+				
+				// 注意：不需要在这里调用 MoveAndSlide()
+				// 因为 ResetFromTrap() 已经通过 _physicsMovement.StopImmediately()
+				// 完全重置了物理模块的速度状态，下一帧 ProcessMovement() 会正确处理
+				
 				_log.Info("[PlayerResetHandler] ✓ 玩家已移动到 Begin 位置");
 			}
 			else
@@ -152,7 +158,19 @@ public partial class PlayerResetHandler : IPlayerResetHandler
 		}
 	}
 
-	/// <inheritdoc />
+	/// <summary>
+	///     恢复玩家可见性
+	///     <para>
+	///         关键改进：使用 Timer 延迟启用碰撞体
+	///         避免 "flushing queries" 错误和时序冲突
+	///         
+	///         问题背景：
+	///         TrapStatic 使用 CallDeferred 在下一帧禁用碰撞体
+	///         如果我们立即启用，会被延迟的禁用覆盖
+	///         解决方案：我们也延迟，确保在帧N+2才启用
+	///     </para>
+	///     <param name="playerNode">玩家节点</param>
+	/// </summary>
 	public void RestorePlayerVisibility(Node playerNode)
 	{
 		try
@@ -177,7 +195,31 @@ public partial class PlayerResetHandler : IPlayerResetHandler
 				var collisionShape = characterBody.GetNodeOrNull<CollisionShape2D>("CollisionShape2D");
 				if (collisionShape != null)
 				{
-					collisionShape.Disabled = false;
+					// ✅ 关键修复：使用 Timer 延迟启用碰撞体
+					// 原因：
+					// 1. TrapStatic 在 HidePlayer() 中使用 CallDeferred 禁用碰撞体（帧N+1）
+					// 2. 如果我们立即启用（帧N），会在帧N+1被覆盖
+					// 3. 如果我们也在帧N+1启用，可能与物理查询冲突导致 "flushing queries" 错误
+					// 4. 解决方案：使用 0 秒 Timer 延迟到帧末尾或下一帧执行
+					
+					var tree = playerNode.GetTree();
+					if (tree != null)
+					{
+						tree.CreateTimer(0).Timeout += () => 
+						{
+							if (GodotObject.IsInstanceValid(collisionShape))
+							{
+								collisionShape.Disabled = false;
+							}
+						};
+						_log.Debug("[PlayerResetHandler] ✓ 碰撞体启用已安排（Timer延迟）");
+					}
+					else
+					{
+						// 如果无法获取场景树，则立即启用（回退方案）
+						collisionShape.Disabled = false;
+						_log.Warn("[PlayerResetHandler] ⚠️ 无法获取场景树，立即启用碰撞体");
+					}
 				}
 			}
 
@@ -198,6 +240,20 @@ public partial class PlayerResetHandler : IPlayerResetHandler
 			if (characterBody != null)
 			{
 				ResetPlayerPhysicsState(characterBody);
+				
+				// 额外：调用 PlayerMovementController 的完整陷阱恢复
+				var movementCtrl = characterBody.GetNodeOrNull<PlayerMovementController>("PlayerMovementController") ??
+								   characterBody.GetNodeOrNull<PlayerMovementController>("CharacterBody2D");
+				if (movementCtrl != null)
+				{
+					movementCtrl.ResetFromTrap();
+					_log.Info("[PlayerResetHandler] ✓ PlayerMovementController 从陷阱中恢复");
+				}
+				else
+				{
+					_log.Debug("[PlayerResetHandler] 未找到 PlayerMovementController");
+				}
+				
 				_log.Info("[PlayerResetHandler] ✓ 物理状态已重置");
 			}
 		}

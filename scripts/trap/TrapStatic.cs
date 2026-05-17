@@ -126,6 +126,7 @@ public partial class TrapStatic : Node2D
 	///     <param name="body">进入区域的物理实体</param>
 	///     
 	///     触发流程（符合规范）:
+	 ///     0. 【v2.1 新增】检查碰撞体是否已禁用（防止隐形子弹攻击）
 	 ///     1. 检查是否为玩家
 	 ///     2. 执行 HidePlayer() 隐藏玩家
 	 ///     3. 调用全局静态事件 TriggerPlayerReset()
@@ -133,11 +134,40 @@ public partial class TrapStatic : Node2D
 	 ///          a) 玩家位置恢复函数（→begin位置）
 	 ///          b) 玩家模型显示恢复函数
 	 ///          c) 玩家可视状态恢复函数
+	 ///     
+	 ///     v2.1 关键修复:
+	 ///     当 BulletTrap 调用 HideBullet() 后，虽然禁用了碰撞体，
+	 ///     但同一物理帧中排队的其他 BodyEntered 回调仍会执行。
+	 ///     此处添加防护检查：如果 Area2D.Monitoring=false 或 CollisionShape2D.Disabled=true，
+	 ///     说明陷阱已被停用，应立即忽略所有后续的碰撞事件。
 	 /// </summary>
 	private void OnBodyEntered(Node body)
 	{
 		try
 		{
+			// 【v2.1 关键防护】检查陷阱是否已被停用
+			// 当 BulletTrap.HideBullet() 被调用后，碰撞体会被禁用，
+			// 但同一帧中排队的其他 BodyEntered 回调仍会执行此处。
+			// 必须在此处拦截，防止"隐形子弹攻击玩家"的问题。
+			if (_trapArea != null && GodotObject.IsInstanceValid(_trapArea))
+			{
+				// 检查1: Area2D 是否停止监控
+				if (!_trapArea.Monitoring)
+				{
+					_log.Debug("[TrapStatic] ⛔ 陷阱已停止监控（Monitoring=false），忽略碰撞事件");
+					return;
+				}
+
+				// 检查2: 碰撞形状是否被禁用
+				var collisionShape = _trapArea.GetNodeOrNull<CollisionShape2D>("CollisionShape2D");
+				if (collisionShape != null && collisionShape.Disabled)
+				{
+					_log.Debug("[TrapStatic] ⛔ 陷阱碰撞体已禁用（Disabled=true），忽略碰撞事件");
+					return;
+				}
+			}
+			
+			// 原有逻辑继续...
 			if (_isTriggered && !AutoReset)
 			{
 				_log.Debug("[TrapStatic] 陷阱已触发且不自动重置，忽略");
@@ -191,7 +221,7 @@ public partial class TrapStatic : Node2D
 		try
 		{
 			_log.Info("[TrapStatic] 👁️ 正在隐藏玩家...");
-			
+
 			var canvasItem = playerNode as CanvasItem;
 			if (canvasItem != null)
 			{
@@ -203,18 +233,18 @@ public partial class TrapStatic : Node2D
 				playerNode.ProcessMode = Node.ProcessModeEnum.Disabled;
 				_log.Info("[TrapStatic] ✓ 玩家已禁用（非CanvasItem节点）");
 			}
-			
+
 			var characterBody = FindCharacterBody(playerNode);
 			if (characterBody != null)
 			{
 				characterBody.Visible = false;
 				_log.Debug("[TrapStatic] ✓ CharacterBody2D 也已隐藏");
-				
+
 				var collisionShape = characterBody.GetNodeOrNull<CollisionShape2D>("CollisionShape2D");
 				if (collisionShape != null)
 				{
-					collisionShape.Disabled = true;
-					_log.Debug("[TrapStatic] ✓ 碰撞形状已禁用（防止持续触发）");
+					CallDeferred(MethodName._DeferredDisableCollisionShape, collisionShape);
+					_log.Debug("[TrapStatic] ✓ 碰撞形状禁用已安排（延迟执行）");
 				}
 			}
 		}
@@ -222,6 +252,20 @@ public partial class TrapStatic : Node2D
 		{
 			_log.Error($"[TrapStatic] ❌ 隐藏玩家异常: {ex.Message}");
 		}
+	}
+
+	/// <summary>
+	///     延迟禁用碰撞形状（由 CallDeferred 调用）
+	///     <para>
+	///         在下一帧执行 Disabled = true，避免 "flushing queries" 错误。
+	///         此方法必须在主线程调用，CallDeferred 保证这一点。
+	 ///     </para>
+	/// </summary>
+	private static void _DeferredDisableCollisionShape(CollisionShape2D collisionShape)
+	{
+		if (!GodotObject.IsInstanceValid(collisionShape)) return;
+
+		collisionShape.Disabled = true;
 	}
 
 	/// <summary>安排延迟重置</summary>
