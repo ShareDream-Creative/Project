@@ -269,21 +269,24 @@ public partial class BaseLevelController : Node2D, IController, ISceneBehaviorPr
 
 		try
 		{
-			_log.Info("[BaseLevelController] 步骤1/7: 初始化服务引用...");
+			_log.Info("[BaseLevelController] 步骤1/9: 初始化服务引用...");
 			InitializeServices();
 
-			_log.Info("[BaseLevelController] 步骤2/7: 确保游戏状态...");
+
+				_log.Info("[BaseLevelController] 步骤2/9: 清除上一关放置的障碍物...");
+				ClearPlacedObstacles();
+			_log.Info("[BaseLevelController] 步骤3/9: 确保游戏状态...");
 			await EnsurePlayingStateAsync();
 
-			_log.Info("[BaseLevelController] 步骤3/7: 清理残留UI...");
+			_log.Info("[BaseLevelController] 步骤4/9: 清理残留UI...");
 			await _uiManager!.ClearExistingUiAsync();
 
-			_log.Info("[BaseLevelController] 步骤4/7: 生成玩家角色...");
+			_log.Info("[BaseLevelController] 步骤5/9: 生成玩家角色...");
 			_playerManager!.SpawnPlayer();
 
 			OnPlayerSpawned(_playerManager.PlayerInstance!);
 
-			_log.Info("[BaseLevelController] 步骤5/7: 设置终点检测...");
+			_log.Info("[BaseLevelController] 步骤6/9: 设置终点检测...");
 			_playerManager.SetupEndAreaDetection();
 
 			_playerManager.OnGameCompleteCallback = () =>
@@ -293,21 +296,13 @@ public partial class BaseLevelController : Node2D, IController, ISceneBehaviorPr
 				OnGameCompleted();
 			};
 
-			if (SkipBuildPhase)
-			{
-				_log.Info("[BaseLevelController] 步骤6/9: 跳过构建阶段（SkipBuildPhase=true）...");
-				OnBuildFinished();
-			}
-			else
-			{
-				_log.Info("[BaseLevelController] 步骤6/9: 加载构建界面...");
-				await _uiManager.ShowBuildUiAsync();
-			}
+			_log.Info("[BaseLevelController] 步骤7/9: 加载构建界面...");
+			await _uiManager.ShowBuildUiAsync();
 
-			_log.Info("[BaseLevelController] 步骤7/9: 初始化规则系统...");
+			_log.Info("[BaseLevelController] 步骤8/9: 初始化规则系统...");
 			InitializeRulesIntegration();
 
-			_log.Info("[BaseLevelController] 步骤8/9: 初始化失败区域检测...");
+			_log.Info("[BaseLevelController] 步骤9/9: 初始化失败区域检测...");
 			InitializeDefeatAreaDetection();
 
 			_log.Info("[BaseLevelController] 步骤9/9: 订阅全局陷阱事件...");
@@ -349,6 +344,7 @@ public partial class BaseLevelController : Node2D, IController, ISceneBehaviorPr
 
 		_playerManager?.Cleanup();
 		_rulesIntegration?.Cleanup();
+			ClearPlacedObstacles();
 
 		CleanupPhaseFlags();
 
@@ -640,7 +636,22 @@ public partial class BaseLevelController : Node2D, IController, ISceneBehaviorPr
 	{
 		LevelControllerData.ResetPhaseFlags();
 		_log.Debug("[BaseLevelController] 所有阶段标志已重置");
-	}
+		}
+		private void ClearPlacedObstacles()
+		{
+			var obstaclesNode = GetNodeOrNull<Node>("Obstacles");
+			if (obstaclesNode == null)
+			{
+				_log.Debug("[BaseLevelController] 无 Obstacles 容器，跳过障碍物清理");
+				return;
+			}
+
+			var childCount = obstaclesNode.GetChildCount();
+			RemoveChild(obstaclesNode);
+			obstaclesNode.QueueFree();
+
+			_log.Info($"[BaseLevelController] 已清除 Obstacles 容器及其 {childCount} 个子障碍物");
+		}
 
 	/// <summary>
 	///     初始化失败区域检测

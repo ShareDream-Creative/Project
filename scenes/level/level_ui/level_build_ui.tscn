@@ -1,6 +1,12 @@
 [gd_scene format=3 uid="uid://d2x4bt0rm7hdy"]
 
 [ext_resource type="Script" uid="uid://rgawai4oqo1t" path="res://scripts/level/ui/LevelBuildUi.cs" id="1_du0q1"]
+[ext_resource type="PackedScene" uid="uid://cfuvnryxlpn4b" path="res://scenes/poker/poker.tscn" id="2_6anep"]
+[ext_resource type="Script" uid="uid://cefa21aea35ac" path="res://scripts/poker/PokerHand.cs" id="3_hand"]
+[ext_resource type="PackedScene" uid="uid://1rmioom8ydcq" path="res://scenes/platform/wall.tscn" id="4_wall"]
+[ext_resource type="PackedScene" uid="uid://bekvxk16ymoeq" path="res://scenes/platform/glass.tscn" id="5_glass"]
+[ext_resource type="PackedScene" uid="uid://dl36yxcgi18ce" path="res://scenes/platform/plate_Default.tscn" id="6_plate"]
+[ext_resource type="PackedScene" uid="uid://c1lwahk41awbt" path="res://scenes/trap/Trap_static.tscn" id="7_trap"]
 
 [node name="LevelBuildUi" type="Control" unique_id=1136690733]
 layout_mode = 3
@@ -30,3 +36,25 @@ offset_bottom = 521.0
 size_flags_horizontal = 4
 theme_override_font_sizes/font_size = 32
 text = "完成！"
+
+[node name="PokerHand" type="Control" parent="."]
+layout_mode = 1
+offset_left = 40.0
+offset_top = 420.0
+offset_right = 920.0
+offset_bottom = 495.0
+mouse_filter = 2
+script = ExtResource("3_hand")
+CardSpacing = 0.6
+
+[node name="WallCard" type="Button" parent="PokerHand" instance=ExtResource("2_6anep")]
+ObstacleScene = ExtResource("4_wall")
+
+[node name="GlassCard" type="Button" parent="PokerHand" instance=ExtResource("2_6anep")]
+ObstacleScene = ExtResource("5_glass")
+
+[node name="PlateCard" type="Button" parent="PokerHand" instance=ExtResource("2_6anep")]
+ObstacleScene = ExtResource("6_plate")
+
+[node name="TrapCard" type="Button" parent="PokerHand" instance=ExtResource("2_6anep")]
+ObstacleScene = ExtResource("7_trap")

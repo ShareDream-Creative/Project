@@ -1,0 +1,1 @@
+- [Project Overview](project_overview.md) — Complete architecture, design patterns, tech stack, game flow, and directory map of the GFramework-Godot-Template project
