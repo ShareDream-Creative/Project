@@ -74,17 +74,16 @@ position = Vector2(130, 331)
 position = Vector2(254, 395)
 
 [node name="Turret" parent="." unique_id=1873261723 instance=ExtResource("4_uyrkt")]
-position = Vector2(272, 129)
+position = Vector2(314, 274)
 script = ExtResource("5_umuc2")
 ColdTime = 0.5
-DetectLength = 427.0
-DetectWidth = 96.0
-DetectRotationDeg = -94.30000000000001
+DetectLength = 372.0
 
 [node name="Bullet" parent="Turret" unique_id=1438942146 instance=ExtResource("5_pu572")]
 
 [node name="Ladder" parent="." unique_id=1574291903 instance=ExtResource("6_ahmkn")]
-position = Vector2(70, 263)
+position = Vector2(186.99998, 268)
+rotation = -0.013018727
 
 [node name="Wall" parent="." unique_id=1471831055 instance=ExtResource("8_xjq40")]
 position = Vector2(744, 328)

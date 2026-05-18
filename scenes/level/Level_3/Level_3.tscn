@@ -126,7 +126,7 @@ scale = Vector2(3, 3)
 position = Vector2(858, 276)
 
 [node name="Turret" parent="Ground" unique_id=1873261723 instance=ExtResource("9_jlh81")]
-position = Vector2(853, 8)
+position = Vector2(857, 13)
 script = ExtResource("10_50t5p")
 DetectLength = 252.0
 DetectWidth = 30.0

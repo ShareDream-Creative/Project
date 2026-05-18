@@ -2,12 +2,15 @@
 
 [ext_resource type="Script" uid="uid://taml7eh1gc35" path="res://scripts/platform/PushPullRigidBody.cs" id="1_bn8sq"]
 
+[sub_resource type="PhysicsMaterial" id="PhysicsMaterial_bn8sq"]
+
 [sub_resource type="RectangleShape2D" id="RectangleShape2D_jlwj5"]
 size = Vector2(28, 29)
 
 [node name="rig" type="Node2D" unique_id=1972891544]
 
 [node name="RigidBody2D" type="RigidBody2D" parent="." unique_id=1575107016]
+physics_material_override = SubResource("PhysicsMaterial_bn8sq")
 script = ExtResource("1_bn8sq")
 
 [node name="CollisionShape2D" type="CollisionShape2D" parent="RigidBody2D" unique_id=831699839]

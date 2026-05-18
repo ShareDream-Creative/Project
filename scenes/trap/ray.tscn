@@ -1,18 +1,26 @@
 [gd_scene format=3 uid="uid://b7q5wsrvoerkb"]
 
-[sub_resource type="RectangleShape2D" id="RectangleShape2D_mofk0"]
+[ext_resource type="Script" uid="uid://ymnxs1djly7k" path="res://scripts/trap/RayTrap.cs" id="1_s74kl"]
 
 [node name="Ray" type="Node2D" unique_id=769443580]
+script = ExtResource("1_s74kl")
 
-[node name="Area2D" type="Area2D" parent="." unique_id=9131275]
+[node name="ray" type="Node2D" parent="." unique_id=1344093027]
+position = Vector2(0, -20)
+scale = Vector2(0.05, 1)
 
-[node name="CollisionShape2D" type="CollisionShape2D" parent="Area2D" unique_id=1542718908]
-shape = SubResource("RectangleShape2D_mofk0")
-debug_color = Color(0.72907746, 0.03882602, 0.153449, 0.41960785)
+[node name="ColorRect" type="ColorRect" parent="ray" unique_id=204840160]
+offset_left = -20.0
+offset_top = -19.0
+offset_right = 20.0
+offset_bottom = 21.0
+color = Color(0.7411765, 0, 0.18431373, 0.5294118)
 
-[node name="ColorRect" type="ColorRect" parent="Area2D" unique_id=1794998095]
-offset_left = -10.0
-offset_top = -10.0
-offset_right = 10.0
-offset_bottom = 10.0
-color = Color(0.78907543, 0, 0.16376776, 0.5254902)
+[node name="found" type="Node2D" parent="." unique_id=1678089864]
+scale = Vector2(0.15, 0.075)
+
+[node name="ColorRect" type="ColorRect" parent="found" unique_id=735734417]
+offset_left = -21.0
+offset_right = 19.0
+offset_bottom = 40.0
+color = Color(0.16565639, 0.16565642, 0.16565639, 1)

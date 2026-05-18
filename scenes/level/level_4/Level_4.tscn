@@ -28,7 +28,7 @@ shape = SubResource("RectangleShape2D_gtsne")
 
 [node name="Begin" type="Node2D" parent="." unique_id=269552229]
 unique_name_in_owner = true
-position = Vector2(38, 380)
+position = Vector2(45, 369)
 
 [node name="Prohibit" parent="." unique_id=1309119243 instance=ExtResource("2_gtsne")]
 
@@ -65,12 +65,6 @@ scale = Vector2(6.3199987, 1.3200006)
 position = Vector2(768.99994, 349)
 scale = Vector2(9.25962, 0.8349743)
 
-[node name="Ray" parent="Ground" unique_id=769443580 instance=ExtResource("6_pe2xk")]
-position = Vector2(428, 75.00001)
-scale = Vector2(-1.0288786, -20.377617)
-
-[node name="Sprite2D" type="Sprite2D" parent="Ground/Ray" unique_id=1216812864]
-
 [node name="Spring" parent="Ground" unique_id=558498023 instance=ExtResource("7_i3i0n")]
 position = Vector2(160, 404.99997)
 rotation = 0.7987342
@@ -84,9 +78,13 @@ scale = Vector2(4.919999, 0.39999753)
 position = Vector2(131, 415)
 
 [node name="rig2" parent="Ground" unique_id=1036753771 instance=ExtResource("8_67h2e")]
-position = Vector2(358, 107)
+position = Vector2(371.00003, 109)
 scale = Vector2(1.5518047, 1.5712259)
 
 [node name="TrapStatic" parent="Ground" unique_id=256416211 instance=ExtResource("9_viffl")]
 position = Vector2(487, 652)
 scale = Vector2(51.721447, 8.039997)
+
+[node name="Ray" parent="Ground" unique_id=769443580 instance=ExtResource("6_pe2xk")]
+position = Vector2(426, 243)
+scale = Vector2(3.4, 3.0915504)
