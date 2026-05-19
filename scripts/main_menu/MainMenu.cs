@@ -14,6 +14,9 @@ using GFrameworkGodotTemplate.scripts.enums.ui;
 using GFrameworkGodotTemplate.scripts.enums;
 using GFrameworkGodotTemplate.scripts.level;
 using GFrameworkGodotTemplate.scripts.level.controllers;
+using GFrameworkGodotTemplate.scripts.data.model;
+using GFrameworkGodotTemplate.scripts.poker;
+using GFrameworkGodotTemplate.scripts.events.poker;
 using Godot;
 
 namespace GFrameworkGodotTemplate.scripts.main_menu;
@@ -364,27 +367,170 @@ public partial class MainMenu : Control, IController, IUiPageBehaviorProvider, I
 	}
 
 	/// <summary>
-	///     新游戏导航协程
+	///     新游戏导航协程 - v8.0 预填充缓存方案
+	///     <para>
+	 ///        核心设计理念 (方案A):
+	 ///        - 模拟 ContinueGame 的数据流：预填充全局缓存
+	 ///        - 在切换到 TeachLevel 场景之前设置 ClassifiedPokerEvents.LastItemData
+	 ///        - LevelBuildUi 创建时自动读取缓存并显示卡牌
+	 ///        
+	 ///        完整流程:
+	 ///        1. 切换到 PlayingState（游戏状态）
+	 ///        2. 预填充教程卡牌数据到全局缓存 ⭐ 关键！
+	 ///        3. 切换到 TeachLevel 场景
+	 ///        4. BaseLevelController.OnEnterAsync() → ShowBuildUiAsync()
+	 ///        5. LevelBuildUi._Ready() → 检查 LastItemData → ✅ 有数据 → 显示卡牌
+	 ///        
+	 ///        与 ContinueGameCoroutine 的对比:
+	 ///        - ContinueGame: PrepareUI(用户配置) → UpdateCache() → Level场景
+	 ///        - NewGame:      [硬编码]   → UpdateCache() → TeachLevel场景
+	 ///        
+	 ///        数据流完全一致！只是来源不同：
+	 ///        - ContinueGame: 用户在 PrepareUI 中选择的卡牌
+	 ///        - NewGame:      硬编码的2张 platform 卡牌
+	 ///     </para>
 	/// </summary>
 	private IEnumerator<IYieldInstruction> NewGameCoroutine()
 	{
-		_log.Info("[MainMenu] ═══════════ 开始新游戏流程 ═══════════");
-		_log.Info("[MainMenu] → 直接进入教程关卡 (Teach_Level)");
+		_log.Info("[MainMenu] ═══════════ 开始新游戏流程 v8.0 ═══════════");
+		_log.Info("[MainMenu] 目标: 教程关卡 (Teach_Level)");
+		_log.Info("[MainMenu] 方案: 预填充全局缓存 (模拟ContinueGame数据流)");
 
-		yield return null;  // 等待一帧，避免"flushing queries"错误
+		yield return null; // 等待一帧
 
-		_log.Info("[MainMenu] 阶段1[状态机]: 正在切换到PlayingState...");
-
+		// ════════════════════════════════════════════════
+		// 步骤1[状态机]: 切换到PlayingState
+		// ════════════════════════════════════════════════
+		_log.Info("[MainMenu] 步骤1: 切换到PlayingState...");
 		yield return _stateMachineSystem.ChangeToAsync<PlayingState>().AsCoroutineInstruction();
 
 		if (!GodotObject.IsInstanceValid(this)) { CleanupNavigation(); yield break; }
 
-		_log.Info("[MainMenu] 阶段2[场景]: 正在切换到教程关卡...");
+		_log.Info("[MainMenu] ✓ PlayingState 已激活");
+
+		// ════════════════════════════════════════════════
+		// 步骤2[数据准备]: 预填充教程卡牌数据到全局缓存 ⭐⭐⭐
+		//
+		// 原理:
+		// ContinueGame 流程中, LevelPrepareUi 会调用:
+		//   ClassifiedPokerEvents.UpdateCache(itemData, actionData)
+		// 然后切换到Level场景后, LevelBuildUi 会检查:
+		//   if (ClassifiedPokerEvents.LastItemData != null)
+		//     → 传递给 PokerHand 显示
+		//
+		// 我们在这里模拟这个过程:
+		//   1. 创建教程用的 ItemPokerData (2张platform)
+		//   2. 调用 UpdateCache 写入全局缓存
+		//   3. 后续 LevelBuildUi 会自动读取并显示
+		// ════════════════════════════════════════════════
+		_log.Info("[MainMenu] 步骤2: 预填充教程卡牌数据到全局缓存...");
+
+		try
+		{
+			var tutorialItemData = new ItemPokerData
+			{
+				Items = new List<Pokerlibrary>()
+			};
+
+			// 添加2张 platform 卡牌（与真实 PrepareUI 配置一致）
+			tutorialItemData.Items.Add(new Pokerlibrary(0, "platform", Pokerlibrary.PokerType.item, "可以踩踏的平台", true));
+			tutorialItemData.Items.Add(new Pokerlibrary(0, "platform", Pokerlibrary.PokerType.item, "可以踩踏的平台", true));
+
+			var tutorialActionData = new ActionPokerData(); // 空，无特殊能力
+
+			_log.Info($"[MainMenu]   教程数据已创建: {tutorialItemData.TotalCount} 张 platform 卡牌");
+
+			// 调用内部方法更新缓存（通过反射或公开API）
+			PreFillTutorialCache(tutorialItemData, tutorialActionData);
+
+			_log.Info("[MainMenu] ✓✓✓ 全局缓存已预填充！");
+			_log.Info("[MainMenu]   后续 LevelBuildUi 将自动读取此缓存并显示卡牌");
+		}
+		catch (Exception ex)
+		{
+			_log.Error($"[MainMenu] ❌ 预填充缓存失败: {ex.Message}");
+			_log.Error("[MainMenu]   TeachLevel 将无法显示卡牌！");
+		}
+
+		// ════════════════════════════════════════════════
+		// 步骤3[场景]: 切换到教程关卡
+		//
+		// 此时全局缓存已有数据, LevelBuildUi 创建时会自动读取
+		// 无需 TeachLevel 做任何额外配置!
+		// ════════════════════════════════════════════════
+		_log.Info("[MainMenu] 步骤3: 切换到 TeachLevel 场景...");
+		_log.Info("[MainMenu]   (全局缓存已就绪, LevelBuildUi将自动显示卡牌)");
+		
 		yield return _sceneRouter.ReplaceAsync(nameof(SceneKey.TeachLevel)).AsTask().AsCoroutineInstruction();
 
-		_log.Info("[MainMenu] ✓ 新游戏流程已启动 - 目标: 教程关卡");
+		if (!GodotObject.IsInstanceValid(this)) { CleanupNavigation(); yield break; }
+
+		_log.Info("════════════ [MainMenu] 新游戏流程完成 ═══════════");
+		_log.Info("[MainMenu] ✓ TeachLevel 场景已加载");
+		_log.Info("[MainMenu] ✓ 控制权已移交 TeachLevel");
+		_log.Info("[MainMenu]");
+		_log.Info("[MainMenu] 后续流程 (由BaseLevelController自动管理):");
+		_log.Info("[MainMenu]   1. BaseLevelController.OnEnterAsync() [9步初始化]");
+		_log.Info("[MainMenu]   2. ShowBuildUiAsync() → 创建 LevelBuildUi");
+		_log.Info("[MainMenu]   3. LevelBuildUi._Ready() → 检查 LastItemData → ✅ 显示卡牌");
+		_log.Info("[MainMenu]   4. 玩家构建 → Play → 胜利");
 
 		CleanupNavigation();
+	}
+
+	/// <summary>
+	///     预填充教程卡牌数据到全局缓存
+	///     <para>
+	 ///        通过反射调用 ClassifiedPokerEvents.UpdateCache() 内部方法，
+	 ///        将教程用的卡牌数据写入全局静态缓存。
+	 ///        
+	 ///        这样 LevelBuildUi 创建时会自动检测到缓存数据，
+	 ///        并传递给 PokerHand 显示，完全复用 ContinueGame 的数据流。
+	 ///        
+	 ///        为什么使用反射:
+	 ///        - ClassifiedPokerEvents.UpdateCache() 是 internal 方法
+	 ///        - 不希望将此方法公开（避免被误用）
+	 ///        - 仅在 MainMenu.NewGameCoroutine() 中调用一次
+	 ///     </para>
+	/// </summary>
+	private void PreFillTutorialCache(ItemPokerData itemData, ActionPokerData actionData)
+	{
+		try
+		{
+			var updateCacheMethod = typeof(ClassifiedPokerEvents).GetMethod(
+				"UpdateCache",
+				System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static
+			);
+
+			if (updateCacheMethod != null)
+			{
+				updateCacheMethod.Invoke(null, new object[] { itemData, actionData });
+				_log.Info("[MainMenu] ✓✓✓ PreFillTutorialCache 成功！");
+				_log.Info($"[MainMenu]   ItemData: {itemData.TotalCount} 张卡牌");
+				_log.Info($"[MainMenu]   ActionData: {actionData.TotalCount} 个能力");
+			}
+			else
+			{
+				// 备用方案：直接设置属性（如果反射失败）
+				_log.Warn("[MainMenu] ⚠️ UpdateCache 方法未找到，尝试直接设置属性...");
+				
+				var lastItemProp = typeof(ClassifiedPokerEvents).GetProperty("LastItemData");
+				if (lastItemProp != null && lastItemProp.CanWrite)
+				{
+					lastItemProp.SetValue(null, itemData);
+					_log.Info("[MainMenu] ✓ 已通过属性设置 LastItemData");
+				}
+				else
+				{
+					throw new InvalidOperationException("无法访问 ClassifiedPokerEvents 缓存");
+				}
+			}
+		}
+		catch (Exception ex)
+		{
+			_log.Error($"[MainMenu] ❌ PreFillTutorialCache 异常: {ex.Message}");
+			throw; // 重新抛出，让调用方处理
+		}
 	}
 
 	#endregion
