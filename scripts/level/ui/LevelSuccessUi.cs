@@ -10,8 +10,8 @@ using GFrameworkGodotTemplate.scripts.core.ui;
 using GFrameworkGodotTemplate.scripts.cqrs.game.command;
 using GFrameworkGodotTemplate.scripts.cqrs.pause_menu.command.input;
 using GFrameworkGodotTemplate.scripts.enums.scene;
-using GFrameworkGodotTemplate.scripts.enums.ui;
 using GFrameworkGodotTemplate.scripts.enums;
+using GFrameworkGodotTemplate.scripts.enums.ui;
 using GFrameworkGodotTemplate.scripts.level.controllers;
 using GFrameworkGodotTemplate.scripts.utility;
 using Godot;
@@ -171,6 +171,11 @@ public partial class LevelSuccessUi : Control, IController, IUiPageBehaviorProvi
 		InitializeComponents();
 		SetupEventHandlers();
 		
+		// v3.2 新增: TeachLevel 特殊处理
+		// TeachLevel 完成后 GameLevel 会被重置为 None
+		// 此时应该隐藏"再玩一次"按钮（教程关卡不支持重玩）
+		UpdateButtonVisibilityForTeachLevel();
+		
 		_log.Info("[LevelSuccessUi] ✓✓✓ 成功界面初始化完成！🎉");
 		_log.Info("[LevelSuccessUi] 当前职责: 自主管理所有按钮事件和导航逻辑");
 		_log.Info("[LevelSuccessUi] 输入状态: 🚫 Gameplay输入已阻断 (LevelPhase.Success)");
@@ -224,6 +229,63 @@ public partial class LevelSuccessUi : Control, IController, IUiPageBehaviorProvi
 		else
 		{
 			_log.Warn("[LevelSuccessUi] ⚠ IStateMachineSystem服务不可用");
+		}
+	}
+
+	#endregion
+
+	#region 私有方法 - TeachLevel 特殊处理
+
+	/// <summary>
+	///     根据当前关卡类型更新按钮可见性
+	///     <para>
+	 ///        TeachLevel 完成后的特殊处理:
+	 ///        - TeachLevel 设置 ResetGameLevelOnVictory = true
+	 ///        - 胜利后 GameLevel 会被重置为 None (GameLevel.None)
+	 ///        - 教程关卡不支持"再玩一次"，应隐藏该按钮
+	 ///        
+	 ///        判断逻辑:
+	 ///        1. 检查 _levelController 是否存在且为 TeachLevel 类型
+	 ///        2. 或检查 LevelChoose.CurrentGameLevel == GameLevel.None
+	 ///        3. 任一条件成立则隐藏 AgainButton
+	 ///     </para>
+	/// </summary>
+	private void UpdateButtonVisibilityForTeachLevel()
+	{
+		try
+		{
+			bool isTeachLevel = false;
+			
+			// 策略1: 通过控制器实例判断（最可靠）
+			if (_levelController is TeachLevel)
+			{
+				isTeachLevel = true;
+				_log.Info("[LevelSuccessUi] 📚 检测到 TeachLevel 控制器");
+			}
+			
+			// 策略2: 通过 GameLevel 枚举判断（备用）
+			if (!isTeachLevel && LevelChoose.CurrentGameLevel == GameLevel.None)
+			{
+				isTeachLevel = true;
+				_log.Info("[LevelSuccessUi] 📚 检测到 GameLevel.None (TeachLevel完成后)");
+			}
+			
+			if (isTeachLevel && AgainButton != null)
+			{
+				AgainButton.Visible = false;
+				
+				_log.Info("════════════ [LevelSuccessUi] TeachLevel 特殊处理 ═══════════");
+				_log.Info("[LevelSuccessUi] ✅ 已隐藏 '再玩一次' 按钮");
+				_log.Info("[LevelSuccessUi] 原因: 教程关卡(TeachLevel)不支持重玩功能");
+				_log.Info("[LevelSuccessUi] 可用按钮:");
+				_log.Info("[LevelSuccessUi]   • 下一步 → 返回选关界面");
+				_log.Info("[LevelSuccessUi]   • 返回主菜单 → 返回主菜单");
+				_log.Info("═════════════════════════════════════════════");
+			}
+		}
+		catch (Exception ex)
+		{
+			_log.Warn($"[LevelSuccessUi] ⚠️ TeachLevel检测异常: {ex.Message}");
 		}
 	}
 
